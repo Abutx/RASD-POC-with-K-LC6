@@ -1,0 +1,163 @@
+
+==============================================================================
+0. DATA SANITY -- quantisation (FINDINGS 1.1: bare IF sits on 4-7 ADC codes)
+==============================================================================
+  fan cfgB     (200, 128, 100)     61 distinct codes, span  60.0 LSB  (that span IS the ramp)
+  fan cfgA     (240, 2000)         50 distinct codes, span  50.0 LSB  (that span IS the ramp)
+  person cfgA  (240, 2000)         49 distinct codes, span  48.0 LSB  (that span IS the ramp)
+  empty cfgA   (160, 2000)         51 distinct codes, span  50.0 LSB  (that span IS the ramp)
+  -> the target signal is far below one LSB; only FFT processing gain exposes it.
+
+==============================================================================
+1. GEOMETRY -- what each config can physically resolve
+==============================================================================
+  Config A: fs=100000 spc=2000 ramp=50 Hz -> PRF 50 Hz, chirp 20 ms
+            S=9.000e+09 Hz/s, range bin 0.833 m, v_unambiguous +-0.155 m/s
+            range-Doppler coupling 2.68 m per m/s -> a 10 m/s blade tip lands
+            27 m away from 2.5 m.
+            *** Config A CANNOT hold fast blade energy in the 2.5 m bin. It is a
+                valid test for the SLOW parts of the fan only. ***
+  Config B: PRF 1000 Hz, chirp 1 ms, v_unambiguous +-3.11 m/s, coupling 0.134 m
+            per m/s -> a 10 m/s blade smears only 1.3 m. Right config for a fan.
+
+==============================================================================
+2. CONFIG A -- positive control and fan, against a MEASURED floor
+==============================================================================
+  equal averaging: 160 chirps from every condition (fan/person had 240, empty 160)
+
+ range m  empty dB |   PERSON   diff   sigma |      FAN   diff   sigma | null-null
+    0.83    -24.96 |   -19.26   5.69    8.23 |   -25.51  -0.56   -0.80 |      0.13
+    1.67    -21.69 |   -13.85   7.85    9.57 |   -22.56  -0.86   -1.05 |     -1.25
+    2.50    -22.14 |   -14.43   7.71   13.25 |   -22.06   0.08    0.13 |     -0.77
+    3.33    -22.49 |   -19.16   3.33    4.96 |   -22.16   0.33    0.50 |     -0.80
+    4.16    -24.47 |   -23.01   1.46    1.51 |   -25.36  -0.89   -0.92 |     -0.38
+    5.00    -26.42 |   -25.22   1.21    1.30 |   -26.63  -0.20   -0.22 |      0.95
+    5.83    -26.66 |   -26.08   0.59    1.26 |   -26.94  -0.28   -0.60 |      0.54
+    6.66    -27.22 |   -25.95   1.27    1.56 |   -25.76   1.47    1.80 |      0.84
+    7.49    -26.27 |   -26.39  -0.11   -0.14 |   -25.49   0.78    0.96 |     -0.39
+
+  MEASURED floor (split-4 of the empty room), 0.4-8 m: difference sigma = 0.81 dB
+  independent check, two static conditions differenced: rms 0.75 dB -> floor is honest.
+
+  >>> POSITIVE CONTROL: person +7.85 dB at 1.67 m = 9.6 sigma
+      (FINDINGS 5.5 reports +6.7 dB / 12 sigma for this file) -- PASS
+  >>> FAN at the a-priori 2.5 m bin: +0.08 dB = 0.13 sigma -- NO DETECTION
+      best fan bin anywhere in-room: +1.47 dB at 6.66 m = 1.80 sigma (chance bar for 9 bins is 2.10)
+
+==============================================================================
+3. UPPER BOUND on the fan's MTI return (Config A, 2.5 m bin, same processing)
+==============================================================================
+  person target power = +6.90 dB rel. the empty-room MTI floor
+  fan    target power < -4.81 dB (95% upper bound = measured diff + 2 sigma)
+  >>> the fan's moving-target return is at least 11.7 dB below the person's.
+
+==============================================================================
+4. CONFIG B -- 200 CPIs x 128 chirps x 100 samples (the assigned dataset)
+==============================================================================
+  NOTE: this is the ONLY Config B capture that exists -- there is no Config B
+  empty room and no Config B person. Config B is therefore SELF-referenced, and
+  its sensitivity is established by injection (section 6).
+  dwell 25.6 s, range bin 0.833 m, max range 41.6 m
+  MTI notch removes |v|<=0.049 m/s (3 bins). Mains-tagged: 32/128 = 25%
+  *** that 25% IS the chance false-tag rate for '60 Hz multiple' on this Doppler
+      axis -- a mains tag here carries almost no information, so nothing below is
+      claimed or dismissed on the strength of a mains tag alone. ***
+
+  z-map over 2232 (range x Doppler) cells. Chance bar = 3.93 sigma.
+  split-half NULL (fan-on vs fan-on): z std 1.00 (want 1.00), max |z| 3.29
+  -> the measured floor is calibrated; z really is in sigma units.
+
+  top-6 cells:
+      0.83 m   -0.291 m/s (  -46.9 Hz)  z=  8.02  +2.81 dB over the range-bin median
+      0.83 m   +0.291 m/s (  +46.9 Hz)  z=  6.25  +2.38 dB over the range-bin median
+     10.83 m   -0.097 m/s (  -15.6 Hz)  z=  4.83  +1.61 dB over the range-bin median
+     10.83 m   -0.146 m/s (  -23.4 Hz)  z=  4.54  +1.81 dB over the range-bin median
+      7.49 m   -0.097 m/s (  -15.6 Hz)  z=  4.14  +1.36 dB over the range-bin median
+      1.67 m   -0.291 m/s (  -46.9 Hz)  z=  3.67  +1.15 dB over the range-bin median
+
+  >>> at the fan's a-priori range (2.5 m +-1 bin, covering the +-1.3 m blade
+      smear): max z = 3.67 vs a 3.36 chance bar -- NO DETECTION
+  >>> the MTI range profile is FLAT to within 1 dB from 1.7 m to 12 m: this is
+      receiver noise, with no clutter and no target standing above it.
+
+==============================================================================
+5. The 51 Hz feature at 0.83 m: a target, or modulation of the feedthrough?
+==============================================================================
+  A target return scales with RANGE. A modulation of the transmitter feedthrough
+  scales with the FEEDTHROUGH. Those predictions differ, so the data can decide:
+
+ range m  feedthru dB  51Hz sb dB  noise dB  sb-noise  sb/feedthru
+    0.00       -21.41      -53.79    -58.12      4.33       -32.38
+    0.83       -13.76      -45.55    -48.25      2.70       -31.79
+    1.67       -15.17      -42.53    -43.29      0.76       -27.37
+    2.50       -33.63      -43.06    -42.99     -0.07        -9.43
+    3.33       -33.35      -43.23    -43.27      0.04        -9.88
+    4.16       -29.00      -43.67    -43.46     -0.20       -14.66
+    5.00       -35.72      -43.97    -43.65     -0.32        -8.25
+
+  sb/feedthrough is ~constant wherever the feedthrough is large, and the moment
+  the feedthrough falls 20 dB (at >=2.5 m) the sideband falls to EXACTLY the noise
+  floor. It tracks the feedthrough, not range.
+  >>> The 51 Hz sidebands are amplitude modulation of the TX feedthrough (vibration
+      or an electrical artefact), NOT a range-resolved return from the fan. With no
+      fan-OFF Config B capture in existence, whether the fan CAUSES them is untested.
+
+  sideband centroid = 51.83 Hz (a 3-blade fan at 1037 rpm -- entirely plausible),
+  so it is worth asking the CW data whether a coherent 52 Hz line exists at all.
+
+  RESOLUTION-SCALING TEST. A coherent narrow line gains ~3 dB of contrast for every
+  halving of the FFT bin width, because its power stays in one bin while the noise
+  floor per bin drops. Broadband noise gains nothing. 60 Hz mains is the control.
+
+  bin Hz      fanA      fanB     empty   fan-empty |  60Hz (ctrl)
+   2.000     -0.07      0.00     -0.84        0.81 |        13.28
+   1.000      0.49      0.28     -0.43        0.81 |        16.10
+   0.500      1.21      0.63      0.61        0.31 |        19.09
+   0.250      1.68      1.67      1.85       -0.18 |        21.84
+   0.125      2.17      2.98      2.81       -0.24 |        23.96
+
+  the 60 Hz control climbs 13.3 -> 24.0 dB (+2.7 dB per halving) exactly as a
+  coherent line must. The 51.8 Hz fan-minus-empty excess stays flat near 0.8 dB and
+  then goes NEGATIVE. There is no coherent 51.8 Hz line in the CW data.
+  >>> the Config B sideband is an FMCW-mode feedthrough artefact, uncorroborated by
+      CW, and NOT evidence of a fan.
+
+==============================================================================
+6. SENSITIVITY BY INJECTION -- what return WOULD Config B have found?
+==============================================================================
+  inject a point scatterer at 2.5 m (f_beat 3002 Hz), v=1.5 m/s (f_d 241 Hz,
+  mains-clean), random phase per CPI, into the REAL fan-on data.
+
+   amp uV rms     / LSB        z
+         0.00    0.0000     2.31
+         0.71    0.0021     2.82
+         1.41    0.0042     3.89
+         2.12    0.0063     4.85
+         3.54    0.0105     8.77
+         7.07    0.0210    22.05
+        14.14    0.0421    40.05
+        35.36    0.1052   102.69
+
+  >>> Config B would have detected a 1.44 uV rms IF return at 2.5 m
+      = 0.0043 LSB = -47.3 dB BELOW one ADC code (that is the FFT processing gain).
+      The real fan produced nothing above the 3.93 sigma bar, so the fan's IF
+      return is below 1.44 uV rms.
+
+==============================================================================
+7. CW CROSS-CHECK (independent of FMCW; gain-invariant line contrast)
+==============================================================================
+  Absolute levels are NOT comparable: the fan-on 50 kSa/s runs sit ~3 dB BELOW the
+  day-earlier empty baseline (118/108 uV rms vs 158 uV), so an absolute difference
+  measures session gain, not the fan. Compare each spectrum's LINE CONTRAST against
+  its own running median instead -- gain-invariant, and a blade line is a narrowband
+  peak, which survives any broadband offset. Averaging is equalised in both pairs.
+
+  50 kSa/s, 60 s each (equal averaging)  (60 s each)
+    max fan-on excess +1.62 dB at 51.0 Hz (0.317 m/s), sigma_measured 0.52 dB
+    -> 3.1 sigma; 1897 non-mains bins searched, chance bar 3.89 sigma -> NO DETECTION
+
+  100 kSa/s, both truncated to 6 s (equal averaging)  (6 s each)
+    max fan-on excess +5.33 dB at 1332.0 Hz (8.276 m/s), sigma_measured 1.60 dB
+    -> 3.3 sigma; 1897 non-mains bins searched, chance bar 3.89 sigma -> NO DETECTION
+
+figure -> C:/dev/klc6/out/fan/analysis/range-doppler-mti.png

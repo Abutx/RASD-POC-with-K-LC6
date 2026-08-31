@@ -1,0 +1,241 @@
+==============================================================================
+0. QUANTISATION / DATA HYGIENE
+==============================================================================
+fan_cw0      fs= 100000 dur= 25.0s  codes=5  code-entropy=0.963 bit  rms= 157.6 uV  DC=11.866 mV
+               code occupancy [0.000e+00 3.120e-02 7.435e-01 2.250e-01 4.000e-04]
+fan_cw1      fs= 100000 dur= 25.0s  codes=5  code-entropy=0.938 bit  rms= 153.5 uV  DC=11.847 mV
+               code occupancy [0.000e+00 4.450e-02 7.732e-01 1.821e-01 3.000e-04]
+off_smoke    fs= 100000 dur=  6.0s  codes=5  code-entropy=1.072 bit  rms= 173.6 uV  DC=12.996 mV
+               code occupancy [0.0031 0.442  0.5479 0.007  0.    ]
+off_base60   fs=  50000 dur= 59.8s  codes=4  code-entropy=0.933 bit  rms= 158.4 uV  DC=13.250 mV
+               code occupancy [3.300e-03 6.807e-01 3.157e-01 3.000e-04]
+NOTE: fan-on sits on a DIFFERENT code grid (DC 11.85 mV) than either
+      fan-off reference (13.00 / 13.25 mV) and is more concentrated on one
+      code -> its quantisation-noise floor is intrinsically different.
+      Any raw broadband level comparison is confounded; all tests below
+      normalise each record by its own out-of-band floor.
+
+==============================================================================
+3. POSITIVE CONTROL: moving person (FMCW cfgA) -- distribution test
+==============================================================================
+frames: moving 239, empty 159; 22 range bins 0.4-9.0 m
+measured split-half floor (empty condition, rescaled to nA/nB): median 0.584 dB
+BEST BIN: 2.03 m  shift +7.45 dB  floor 0.63 dB  -> 11.9 sigma   (22 bins searched)
+   r=0.81 m  shift  +4.33 dB     8.2 sigma
+   r=1.63 m  shift  +6.44 dB    11.3 sigma
+   r=2.03 m  shift  +7.45 dB    11.9 sigma
+   r=2.44 m  shift  +6.85 dB    11.0 sigma
+   r=2.85 m  shift  +4.73 dB     8.2 sigma
+   r=4.07 m  shift  +2.00 dB     3.4 sigma
+   r=6.91 m  shift  +0.40 dB     0.7 sigma
+  KS at 1.5 m: D=0.588 p=2.80e-31   Anderson-Darling A2k=73.74 p=0.0010
+  var ratio at 1.5 m: +0.18 dB
+  kurtosis at 1.5 m: moving +32.13  empty +8.05
+  AGGREGATE mean-KS over all range bins: obs 0.272 vs null 0.138 +/- 0.015  -> 8.8 sigma
+POSITIVE CONTROL PASSED = True
+
+==============================================================================
+4. FAN (FMCW cfgA) vs empty (box_out) -- identical pipeline to sec.3
+==============================================================================
+frames: fan 239, empty 159; floor median 0.584 dB
+BEST |sigma| BIN: 1.22 m  shift -1.64 dB -> -3.2 sigma   (22 bins searched; |3 sigma| expected ~0.1x by chance)
+   r=0.81 m  shift  -1.06 dB    -2.0 sigma  KS=0.112 p=0.166
+   r=1.63 m  shift  -1.43 dB    -2.5 sigma  KS=0.156 p=0.017
+   r=2.03 m  shift  -0.83 dB    -1.3 sigma  KS=0.115 p=0.145
+   r=2.44 m  shift  +0.19 dB    +0.3 sigma  KS=0.064 p=0.801
+   r=2.85 m  shift  -0.02 dB    -0.0 sigma  KS=0.062 p=0.829
+   r=3.66 m  shift  -0.52 dB    -1.2 sigma  KS=0.064 p=0.788
+   r=4.07 m  shift  +0.30 dB    +0.5 sigma  KS=0.058 p=0.879
+   r=4.88 m  shift  +0.18 dB    +0.3 sigma  KS=0.054 p=0.920
+   r=6.91 m  shift  -0.05 dB    -0.1 sigma  KS=0.085 p=0.469
+  AGGREGATE mean-KS: obs 0.146 vs null 0.138 +/- 0.015  -> +0.5 sigma
+  cfgB internal: Doppler band 0.25-2.5 m/s over the >2.5 m/s noise Doppler bins (0.8-6 m) = +0.03 dB; split-half floor 0.044 dB -> +0.6 sigma  [no cfgB fan-off reference exists: weak, internal only]
+
+==============================================================================
+5. CW: block-PSD distribution tests @ 100 kSa/s
+==============================================================================
+blocks @100kSa/s, 16384 pt (164 ms, 6.10 Hz bins): fan_cw0 152, fan_cw1 152, fan_off_smoke 36
+raw out-of-band floor (15-24 kHz): fan0 -128.47 dB, fan1 -128.78 dB, off -127.68 dB -- fan-on floor is -0.79 dB vs off, an instrument-state offset, normalised out below
+mains tag: 163 of 2458 bins below 15 kHz within 2 Hz of a 60 Hz multiple = 6.63% FALSE-TAG RATE (bin width 6.10 Hz)
+
+NULL 1 (same condition, same session, minutes apart): fan_cw0 vs fan_cw1
+-- null fan0 vs fan1:  nA=152 nB=152
+         band Hz           m/s  dmean dB  dvar dB  medKS KSp<.01 %  nbin
+      20-60       0.12-0.37        +0.43    -0.31  0.092       0.0     6
+      60-120      0.37-0.75        +0.42    -0.15  0.079       0.0    10
+     120-250      0.75-1.55        +0.19    +0.33  0.105       0.0    21
+     250-500      1.55-3.11        +0.03    -0.03  0.092       0.0    41
+     500-1000     3.11-6.21        -0.02    +0.18  0.092       2.4    82
+    1000-2000     6.21-12.43       -0.08    +0.03  0.092       0.6   164
+    2000-4000    12.43-24.85       -0.04    -0.11  0.092       0.9   328
+    4000-8000    24.85-49.71       +0.03    -0.01  0.092       0.9   655
+    8000-15000   49.71-93.20       -0.04    -0.07  0.092       0.8  1147
+
+NULL 2 (same condition, split in half): fan-off smoke first vs second half
+-- null off-half vs off-half:  nA=18 nB=18
+         band Hz           m/s  dmean dB  dvar dB  medKS KSp<.01 %  nbin
+      20-60       0.12-0.37        +1.31    -2.73  0.222       0.0     6
+      60-120      0.37-0.75        +0.48    -1.06  0.306       0.0    10
+     120-250      0.75-1.55        -0.03    +0.53  0.222       0.0    21
+     250-500      1.55-3.11        -0.51    +0.13  0.222       2.4    41
+     500-1000     3.11-6.21        -0.37    -0.40  0.278       1.2    82
+    1000-2000     6.21-12.43       +0.09    +0.18  0.250       0.6   164
+    2000-4000    12.43-24.85       -0.13    -0.30  0.222       0.9   328
+    4000-8000    24.85-49.71       -0.09    +0.09  0.278       0.9   655
+    8000-15000   49.71-93.20       -0.03    +0.08  0.222       0.7  1147
+
+TEST 1: FAN-ON (25+25 s) vs FAN-OFF smoke (6 s), block-count matched to 9 vs 9
+-- fan_on vs fan_off:  nA=36 nB=36
+         band Hz           m/s  dmean dB  dvar dB  medKS KSp<.01 %  nbin
+      20-60       0.12-0.37        -0.39    -0.99  0.167       0.0     6
+      60-120      0.37-0.75        +0.04    -0.49  0.208       0.0    10
+     120-250      0.75-1.55        -0.71    -0.16  0.194       9.5    21
+     250-500      1.55-3.11        +0.15    -0.00  0.194       4.9    41
+     500-1000     3.11-6.21        -0.15    +0.31  0.194       3.7    82
+    1000-2000     6.21-12.43       -0.25    +0.07  0.194       0.6   164
+    2000-4000    12.43-24.85       +0.08    +0.03  0.194       0.3   328
+    4000-8000    24.85-49.71       -0.10    +0.03  0.167       0.3   655
+    8000-15000   49.71-93.20       -0.09    +0.04  0.167       0.5  1147
+
+TEST 1b: same, using ALL 76 fan blocks (Welch t handles the unequal n)
+         band Hz           m/s  dmean dB  dvar dB  medKS KSp<.01 %  nbin
+      20-60       0.12-0.37        -0.12    -0.75  0.155       0.0     6
+      60-120      0.37-0.75        -0.08    -0.29  0.128       0.0    10
+     120-250      0.75-1.55        -0.67    +0.41  0.153       9.5    21
+     250-500      1.55-3.11        +0.01    -0.05  0.138       4.9    41
+     500-1000     3.11-6.21        -0.37    +0.55  0.141       2.4    82
+    1000-2000     6.21-12.43       -0.22    +0.18  0.146       0.0   164
+    2000-4000    12.43-24.85       -0.02    +0.24  0.144       0.9   328
+    4000-8000    24.85-49.71       -0.04    +0.26  0.139       1.2   655
+    8000-15000   49.71-93.20       -0.09    +0.25  0.140       1.0  1147
+
+Scalar band statistic (mains-notched), sigma vs MEASURED same-condition floor:
+  band                                fanON-fanOFF    floor   sigma
+  slow  0.12-0.75 m/s (20-120 Hz)           -0.130    0.636   -0.21
+  walk  0.75-3.1 m/s (120-500 Hz)           +0.209    0.349   +0.60
+  fast  3.1-12.4 m/s (0.5-2 kHz)            -0.208    0.167   -1.25
+  blades 12.4-62 m/s (2-10 kHz)             -0.006    0.095   -0.07
+
+MAINS bins (flagged as an ELECTRICAL-LOAD artefact, NOT a target):
+      60 Hz ( 0.373 m/s): fan_on  +17.78 dB, fan_off  +17.55 dB, delta  +0.23 dB  (same-cond null +0.09 dB)
+     120 Hz ( 0.746 m/s): fan_on  +10.11 dB, fan_off   +9.16 dB, delta  +0.95 dB  (same-cond null +0.42 dB)
+     180 Hz ( 1.118 m/s): fan_on  +11.88 dB, fan_off   +9.68 dB, delta  +2.20 dB  (same-cond null +0.17 dB)
+     240 Hz ( 1.491 m/s): fan_on   +7.49 dB, fan_off   +7.67 dB, delta  -0.18 dB  (same-cond null -0.29 dB)
+     300 Hz ( 1.864 m/s): fan_on   +8.82 dB, fan_off   +6.30 dB, delta  +2.51 dB  (same-cond null +0.23 dB)
+     360 Hz ( 2.237 m/s): fan_on   +5.50 dB, fan_off   +7.08 dB, delta  -1.58 dB  (same-cond null -0.55 dB)
+     480 Hz ( 2.982 m/s): fan_on   +4.56 dB, fan_off   +4.37 dB, delta  +0.20 dB  (same-cond null -0.32 dB)
+
+==============================================================================
+6. CROSS-SESSION CONTROL @ 50 kSa/s (decimated) -- the honest floor
+==============================================================================
+blocks (8192 pt, 164 ms): fan50 305, off_smoke50 36, base60 365
+  band          OFFvsOFF x-session  FAN vs BASE60  FAN vs SMOKE
+  20-120 Hz                 +0.896         +0.819        -0.077
+  120-500 Hz                +0.431         +0.716        +0.285
+  500-2000 Hz               +0.461         +0.288        -0.173
+  2-10 kHz                  +0.119         +0.141        +0.022
+  If |FAN vs OFF| is not clearly larger than |OFF vs OFF across sessions|,
+  the fan-on/off difference is session drift, not the fan.
+
+==============================================================================
+6b. LONG-RECORD @50 kSa/s: fan(305 blk) vs base60(365 blk), with the
+    fan-OFF/fan-OFF cross-session pair as the drift reference
+==============================================================================
+  band          KS fan/base  KS off/base  KS base/base  dB fan/base  dB off/base
+  20-120 Hz          0.2016       0.2149        0.1881       +0.669       +1.083
+  120-500 Hz         0.2066       0.2008        0.1901       +0.415       +0.716
+  500-2000 Hz        0.1922       0.1937        0.1922       +0.278       +0.472
+  2-10 kHz           0.1931       0.1942        0.1926       +0.133       +0.115
+  10-24 kHz          0.1958       0.1964        0.1915       -0.093       -0.123
+  KS fan/base is compared against KS off/base -- BOTH are cross-session, so any
+  fan signal must show as fan/base > off/base. base/base is the within-session floor.
+
+Cadence-velocity structure test (FFT along the TIME axis of the spectrogram):
+a rotating fan should put a sharp line at the blade-pass rate; empty room should not.
+  fan_on_50s     strongest cadence   0.400 Hz  x 1.65 over median  z= 2.03  (2425 cadence bins searched)
+  empty_base60   strongest cadence   0.301 Hz  x 2.55 over median  z= 4.58  (2903 cadence bins searched)
+  empty_smoke6s  strongest cadence   1.510 Hz  x 1.46 over median  z= 1.44  (290 cadence bins searched)
+  A genuine blade-pass line would be a large, record-specific z present ONLY in
+  fan_on. Compare the three rows.
+
+==============================================================================
+6c. MATCHED 60 s @ 50 kSa/s: fan_on x2 vs empty_baseline_60s
+==============================================================================
+  fan60_A   N=3000000 dur=60.0s rms= 118.3 uV DC=11.760 mV codes=4 occ=[0.     0.1289 0.8619 0.0093]
+  fan60_B   N=3000000 dur=60.0s rms= 108.1 uV DC=11.778 mV codes=4 occ=[0.     0.0867 0.8921 0.0212]
+  empty60   N=2991808 dur=59.8s rms= 158.4 uV DC=13.250 mV codes=4 occ=[3.300e-03 6.807e-01 3.157e-01 3.000e-04]
+  blocks: fanA 366, fanB 366, empty 365; using 365 per side, 8192 pt = 6.10 Hz bins
+
+  band                         fan-empty dB null A-B dB   floor   sigma  KS f/e  KS A/B
+  0.12-0.75 m/s   20-120 Hz          -1.241      +0.381   0.189   -6.57  0.1644  0.0438
+  0.75-3.11 m/s  120-500 Hz          -0.672      +0.040   0.116   -5.79  0.0856  0.0589
+  3.1-12.4 m/s  0.5-2 kHz            -0.284      +0.020   0.058   -4.86  0.0747  0.0637
+  12.4-31 m/s     2-5 kHz            -0.100      -0.039   0.047   -2.12  0.0606  0.0666
+  31-62 m/s      5-10 kHz            -0.019      -0.004   0.033   -0.58  0.0626  0.0599
+  62-124 m/s    10-20 kHz            +0.004      +0.005   0.032   +0.12  0.0640  0.0651
+  NOTE the "null A-B" column: two fan-ON records taken minutes apart differ by
+  a comparable amount, which is what the floor is measuring.
+
+PER-BIN SCAN 20 Hz-20 kHz, 3273 bins (3055 after mains notch):
+  |t| > 5 (fan vs empty), mains-notched : 2 bins   [expected by chance at 5 sigma: 0.0017]
+  |t| > 5 (fan_A vs fan_B NULL), notched: 0 bins
+  |t| > 5 on MAINS bins (fan vs empty)  : 1 of 218
+  strongest NON-mains bins (fan vs empty):
+         54.93 Hz    0.341 m/s  t=  -6.95  null t at same bin =  +0.79  d= -1.74 dB
+         24.41 Hz    0.152 m/s  t=  -5.14  null t at same bin =  +0.46  d= -1.81 dB
+        183.11 Hz    1.138 m/s  t=  -4.53  null t at same bin =  +0.24  d= -1.19 dB
+         67.14 Hz    0.417 m/s  t=  -4.40  null t at same bin =  +0.66  d= -1.40 dB
+        109.86 Hz    0.683 m/s  t=  -4.19  null t at same bin =  +1.10  d= -1.41 dB
+         42.72 Hz    0.265 m/s  t=  -3.94  null t at same bin =  +0.72  d= -1.42 dB
+         85.45 Hz    0.531 m/s  t=  -3.77  null t at same bin =  +0.64  d= -1.36 dB
+        439.45 Hz    2.730 m/s  t=  -3.73  null t at same bin =  +0.05  d= -1.29 dB
+  If the null column is comparable, the bin is instrument state, not the fan.
+
+==============================================================================
+7. SPECTRAL ENTROPY / KURTOSIS (structure tests)
+==============================================================================
+  band           H_fanON  H_fanOFF   H_fan0   H_fan1   (1.0 = featureless)
+  20-120 Hz      0.92754   0.94247  0.92761  0.92690
+  120-500 Hz     0.95056   0.97534  0.94772  0.95287
+  500-2000 Hz    0.99862   0.99655  0.99808  0.99847
+  2-10 kHz       0.99911   0.99732  0.99889  0.99886
+  (H_off uses 9 blocks vs 76 for the fan; fewer averages ALWAYS lowers
+   entropy, so H_off < H_fan is expected even with no fan.)
+
+  band            kurt fanON  kurt fanOFF  kurt base60
+  20-120 Hz          +1.1725      -0.2410      +0.2171
+  120-500 Hz         +0.2850      +0.0440      +0.5541
+  500-2000 Hz        +0.1205      +0.0066      +0.5521
+  2-10 kHz           +0.1028      -0.1166      +0.3829
+
+==============================================================================
+7b. SENSITIVITY: 5-sigma upper limits on any fan return
+==============================================================================
+FMCW cfgA (MTI, 0.4-9 m): measured split-half floor = 0.584 dB per range bin.
+  -> 5-sigma upper limit on fan MTI excess = 2.92 dB.
+  -> the moving person gave +7.45 dB in the same bins, i.e. the fan returns at least 4.5 dB less MTI energy than a walking person.
+CW slow  0.12-0.75 m/s (20-120 Hz)   : 5-sigma limit  3.18 dB band-power excess
+CW walk  0.75-3.1 m/s (120-500 Hz)   : 5-sigma limit  1.75 dB band-power excess
+CW fast  3.1-12.4 m/s (0.5-2 kHz)    : 5-sigma limit  0.83 dB band-power excess
+CW blades 12.4-62 m/s (2-10 kHz)     : 5-sigma limit  0.48 dB band-power excess
+CW per-bin noise (0.5-2 kHz) = -124.1 dB(V^2/Hz), ENBW 9.2 Hz;
+  with 304 averaged blocks a coherent tone of amplitude 1.42 uV would reach 5 sigma (record rms is 158 uV, LSB 336 uV).
+
+Mains-harmonic deltas vs the same-condition (fan0 vs fan1) null spread:
+      60 Hz ( 0.373 m/s): delta  +0.23 dB, floor  0.87 dB ->  +0.27 sigma
+     120 Hz ( 0.746 m/s): delta  +0.95 dB, floor  1.26 dB ->  +0.75 sigma
+     180 Hz ( 1.118 m/s): delta  +2.20 dB, floor  0.93 dB ->  +2.37 sigma
+     240 Hz ( 1.491 m/s): delta  -0.18 dB, floor  1.39 dB ->  -0.13 sigma
+     300 Hz ( 1.864 m/s): delta  +2.51 dB, floor  1.19 dB ->  +2.12 sigma
+     360 Hz ( 2.237 m/s): delta  -1.58 dB, floor  1.37 dB ->  -1.15 sigma
+     480 Hz ( 2.982 m/s): delta  +0.20 dB, floor  1.35 dB ->  +0.15 sigma
+   (7 harmonics tested; these are MAINS bins -- a fan is an electrical load,
+    so a rise here is conducted/radiated supply pickup, NOT a Doppler return.)
+
+==============================================================================
+8. VERDICT
+==============================================================================
+CW best band fast  3.1-12.4 m/s (0.5-2 kHz): -0.21 dB, -1.25 sigma
+FMCW fan best bin: -1.64 dB at 1.22 m -> -3.2 sigma
+FMCW positive control: +7.45 dB at 2.03 m -> 11.9 sigma
+figure -> C:/dev/klc6/out/fan/analysis/statistical.png

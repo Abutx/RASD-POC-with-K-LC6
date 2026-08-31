@@ -1,0 +1,256 @@
+========================================================================
+0. QUANTISATION CHECK  (ground rule 2)
+========================================================================
+  fan_on_0         fs= 100000   25.0 s  distinct codes=5  LSB=336 uV  rms=157.6 uV  (0.47 LSB)
+  fan_on_1         fs= 100000   25.0 s  distinct codes=5  LSB=336 uV  rms=153.5 uV  (0.46 LSB)
+  fan_off_6s       fs= 100000    6.0 s  distinct codes=5  LSB=336 uV  rms=173.6 uV  (0.52 LSB)
+  fan_off_60s_50k  fs=  50000   59.8 s  distinct codes=4  LSB=336 uV  rms=158.4 uV  (0.47 LSB)
+  -> signal rms is under 1 LSB; the ADC is dither-limited. Only FFT gain helps.
+
+Welch: 65536-pt Hann, 1.5259 Hz bins.  fan-on blocks=76 (chunk0 38 + chunk1 38),  fan-off blocks=9
+
+========================================================================
+2. MEASURED NOISE FLOOR (disjoint partitions of fan-on, 38 vs 9)
+========================================================================
+  measured per-bin std of a 38-vs-9 difference: median 1.631 dB (theory for chi2 log-average: 1.649 dB)
+  -> unequal averaging (38 vs 9 blocks) is HANDLED: the floor is measured with the same asymmetry, not assumed.
+
+========================================================================
+3. MAINS FALSE-TAG RATE (ground rule 1)
+========================================================================
+       5-   200 Hz :  5.47% of bins fall within 2 Hz of a 60 Hz multiple
+     200-  1000 Hz :  6.68% of bins fall within 2 Hz of a 60 Hz multiple
+    2400-  4000 Hz :  6.67% of bins fall within 2 Hz of a 60 Hz multiple
+    3000- 20000 Hz :  6.68% of bins fall within 2 Hz of a 60 Hz multiple
+  -> above ~3 kHz a mains tag carries ~4% chance content and is NOT by itself evidence.
+
+========================================================================
+4. LINE SEARCH  (fan-on 25+25 s  vs  fan-off 6 s, same fs)
+========================================================================
+
+  [blade-pass comb]  5-200 Hz  (0.031-1.243 m/s), 128 bins searched
+         f Hz     m/s  diff dB   sigma  mains?
+       180.05   1.119    +2.63   +5.46  MAINS
+       178.53   1.109    +2.68   +3.53  MAINS
+        16.78   0.104    +2.61   +1.72  
+        48.83   0.303    +2.50   +1.37  
+        45.78   0.284    +2.22   +1.30  
+       111.39   0.692    +1.76   +1.16  
+        35.10   0.218    +1.73   +1.10  
+        57.98   0.360    +1.32   +1.05  
+    strongest NON-mains: 16.78 Hz (0.104 m/s) +2.61 dB = +1.72 sigma
+    with 128 bins searched, 0.2 bins are expected above +3 sigma by chance
+
+  [blade-tip Doppler]  2400-4000 Hz  (14.912-24.853 m/s), 1049 bins searched
+         f Hz     m/s  diff dB   sigma  mains?
+      3239.44  20.128    +5.23   +4.32  MAINS
+      2482.60  15.425    +4.12   +3.50  
+      3479.00  21.616    +4.43   +3.21  MAINS
+      3240.97  20.137    +5.27   +3.18  MAINS
+      3742.98  23.256    +4.91   +2.95  
+      2877.81  17.881    +3.67   +2.81  
+      2760.31  17.151    +3.11   +2.75  MAINS
+      3192.14  19.834    +4.57   +2.58  
+    strongest NON-mains: 2482.60 Hz (15.425 m/s) +4.12 dB = +3.50 sigma
+    with 1049 bins searched, 1.4 bins are expected above +3 sigma by chance
+
+  [whole band]  20-20000 Hz  (0.124-124.266 m/s), 13094 bins searched
+         f Hz     m/s  diff dB   sigma  mains?
+       180.05   1.119    +2.63   +5.46  MAINS
+       299.07   1.858    +5.21   +5.07  MAINS
+     15281.68  94.950    +7.10   +4.71  
+      3239.44  20.128    +5.23   +4.32  MAINS
+     15940.86  99.046    +6.32   +3.81  
+      8444.21  52.467    +5.80   +3.81  
+       300.60   1.868    +3.34   +3.56  MAINS
+       178.53   1.109    +2.68   +3.53  MAINS
+    strongest NON-mains: 15281.68 Hz (94.950 m/s) +7.10 dB = +4.71 sigma
+    with 13094 bins searched, 17.7 bins are expected above +3 sigma by chance
+
+========================================================================
+5. HARMONIC COMB SEARCH (fundamental 5-120 Hz, harmonics 1..12)
+========================================================================
+      f0 Hz  rpm(3bl)  rpm(5bl)  comb sigma  60Hz-related?
+      88.50      1770      1062       +0.53  
+      65.50      1310       786       +0.14  
+      89.00      1780      1068       -0.04  
+       5.75       115        69       -0.04  
+      60.00      1200       720       -0.09  MAINS-RELATED
+      16.25       325       195       -0.09  
+     106.50      2130      1278       -0.19  
+      88.25      1765      1059       -0.21  
+     112.50      2250      1350       -0.28  
+     117.25      2345      1407       -0.29  
+    NULL (same comb search on 300 fan-on-vs-fan-on partitions):
+      max comb sigma  mean +3.37  95th +4.42  max +5.05
+    observed max comb sigma = +0.53  -> does NOT exceed the 95th pct of the null
+
+========================================================================
+6. CROSS-CHUNK REPRODUCIBILITY
+========================================================================
+  blade-pass   r(diff0,diff1) = +0.0538   (mains bins removed: +0.0006)
+  blade-tip    r(diff0,diff1) = +0.0206   (mains bins removed: +0.0061)
+  whole band   r(diff0,diff1) = +0.0150   (mains bins removed: +0.0105)
+  NULL construction (two disjoint fan-on quarters vs the same disjoint off-halves): r = +0.0060
+  -> a high r here is NOT fan evidence: it is the SESSION difference (different day,
+     different DC pedestal) shared by both fan-on chunks. See the prominence test.
+
+========================================================================
+7. LINE PROMINENCE (session-difference-free)
+========================================================================
+  prominence floor (38-block average): median 0.490 dB
+  bins >5x prominence-floor in BOTH fan-on chunks: 27
+        59.51 Hz   0.370 m/s  prom on0= 13.7 on1= 13.8 off= 13.1 dB  on-off= +0.6  MAINS
+       180.05 Hz   1.119 m/s  prom on0= 12.7 on1= 13.2 off=  8.9 dB  on-off= +3.9  MAINS
+        61.04 Hz   0.379 m/s  prom on0= 11.7 on1= 11.8 off= 12.3 dB  on-off= -0.6  MAINS
+       300.60 Hz   1.868 m/s  prom on0=  9.3 on1=  8.6 off=  4.3 dB  on-off= +4.3  MAINS
+       178.53 Hz   1.109 m/s  prom on0=  8.0 on1=  8.5 off=  4.1 dB  on-off= +3.9  MAINS
+       299.07 Hz   1.858 m/s  prom on0=  8.8 on1=  7.9 off=  1.9 dB  on-off= +6.0  MAINS
+       181.58 Hz   1.128 m/s  prom on0=  6.3 on1=  7.0 off=  4.3 dB  on-off= +2.0  MAINS
+       120.54 Hz   0.749 m/s  prom on0=  5.9 on1=  6.0 off=  4.3 dB  on-off= +1.6  MAINS
+       419.62 Hz   2.607 m/s  prom on0=  4.8 on1=  4.9 off=  3.4 dB  on-off= +1.4  MAINS
+       119.02 Hz   0.739 m/s  prom on0=  4.7 on1=  5.5 off=  4.6 dB  on-off= +0.2  MAINS
+       239.56 Hz   1.488 m/s  prom on0=  4.6 on1=  6.0 off=  6.8 dB  on-off= -2.3  MAINS
+      3239.44 Hz  20.128 m/s  prom on0=  4.1 on1=  4.3 off= -1.7 dB  on-off= +5.8  MAINS
+      2879.33 Hz  17.890 m/s  prom on0=  4.3 on1=  3.8 off=  1.0 dB  on-off= +2.8  MAINS
+        57.98 Hz   0.360 m/s  prom on0=  3.7 on1=  4.4 off=  1.4 dB  on-off= +2.3  
+      2639.77 Hz  16.402 m/s  prom on0=  4.2 on1=  3.6 off=  0.7 dB  on-off= +2.9  MAINS
+  non-mains lines in BOTH fan-on chunks AND >5 floor-sigma above fan-off: 0
+  r(prom_on0,prom_on1) non-mains blade-pass  : +0.3393   r(prom_on0,prom_off): +0.2968
+  r(prom_on0,prom_on1) non-mains blade-tip   : +0.0350   r(prom_on0,prom_off): -0.0138
+  r(prom_on0,prom_on1) non-mains whole band  : +0.0081   r(prom_on0,prom_off): -0.0077
+
+========================================================================
+8. BROADBAND BAND POWER (fan as a distributed Doppler target)
+========================================================================
+  blade-pass 0.03-1.2 m/s  on= -117.12 off= -115.92 dB  diff= -1.20 dB  block-scatter SE=0.44  z= -2.76
+  mid 1.2-15 m/s           on= -124.93 off= -123.82 dB  diff= -1.11 dB  block-scatter SE=0.12  z= -9.26
+  blade-tip 15-25 m/s      on= -126.00 off= -125.05 dB  diff= -0.95 dB  block-scatter SE=0.09  z=-10.91
+  25-124 m/s               on= -126.96 off= -126.05 dB  diff= -0.91 dB  block-scatter SE=0.08  z=-11.44
+  all 0.12-124 m/s         on= -126.40 off= -125.43 dB  diff= -0.97 dB  block-scatter SE=0.08  z=-11.73
+
+========================================================================
+9. SECOND FAN-OFF REFERENCE (60 s @ 50 kSa/s, matched 1.526 Hz bins)
+========================================================================
+  blocks=91  bin=1.5259 Hz  (Nyquist 25000 Hz)
+  prominence of the top fan-on lines in this independent empty-room reference:
+        59.51 Hz  fan-on  13.7 dB  fan-off(6s)  13.1 dB  empty-room(60s)  14.3 dB  MAINS
+       180.05 Hz  fan-on  12.7 dB  fan-off(6s)   8.9 dB  empty-room(60s)  12.3 dB  MAINS
+        61.04 Hz  fan-on  11.7 dB  fan-off(6s)  12.3 dB  empty-room(60s)  12.4 dB  MAINS
+       300.60 Hz  fan-on   8.6 dB  fan-off(6s)   4.3 dB  empty-room(60s)   7.7 dB  MAINS
+       178.53 Hz  fan-on   8.0 dB  fan-off(6s)   4.1 dB  empty-room(60s)   7.5 dB  MAINS
+       299.07 Hz  fan-on   7.9 dB  fan-off(6s)   1.9 dB  empty-room(60s)   6.4 dB  MAINS
+       181.58 Hz  fan-on   6.3 dB  fan-off(6s)   4.3 dB  empty-room(60s)   6.7 dB  MAINS
+       120.54 Hz  fan-on   5.9 dB  fan-off(6s)   4.3 dB  empty-room(60s)   1.4 dB  MAINS
+  -> the mains lines that looked "raised by the fan" against the 6 s reference sit at
+     the SAME prominence in the 91-block empty-room reference. The apparent rise was
+     the under-averaged 6 s reference, not the fan.
+
+  BEST-POWERED LINE TEST: fan-on prominence (76 blk) - empty-room prom (91 blk)
+    measured combined prominence floor: 0.484 dB
+    blade-pass   n=  128  best any    120.54 Hz  +9.81 sig MAINS   best NON-mains     25.94 Hz (  0.16 m/s) +1.45 dB = +3.19 sig
+    blade-tip    n= 1049  best any   3479.00 Hz  +7.17 sig MAINS   best NON-mains   2877.81 Hz ( 17.88 m/s) +2.61 dB = +5.61 sig
+    whole band   n=13094  best any    120.54 Hz  +9.81 sig MAINS   best NON-mains   2877.81 Hz ( 17.88 m/s) +2.61 dB = +5.61 sig
+    comb search on this test: best f0 60.00 Hz, +9.86 sigma (null 95th pct +4.42)
+
+========================================================================
+10. CADENCE-VELOCITY DIAGRAM (blade-flash periodicity)
+========================================================================
+  cadence resolution 0.040 Hz, searched 4875 bins 5-200 Hz
+    fan_on_0   peak cadence   60.01 Hz   +5.5 dB over band median  MAINS
+    fan_on_1   peak cadence   59.97 Hz   +5.2 dB over band median  MAINS
+    fan_off    peak cadence   27.32 Hz   +1.6 dB over band median  
+  do the two fan-on chunks agree on a cadence? 60.01 vs 59.97 Hz  -> AGREE
+
+========================================================================
+11. INJECTION SENSITIVITY -> upper bound on any missed fan line
+========================================================================
+  in-band PSD floor (500-5000 Hz median) = -125.82 dB/Hz
+    injected  -8 dB (per-bin, vs PSD floor): 10/10 detected at 5 sigma, mean +16.0 sigma
+  -> DETECTION THRESHOLD: a coherent Doppler line -8 dB above the in-band PSD floor
+     is found at >=5 sigma in 9/10 trials. Nothing at or above that level exists in the fan-on data.
+
+figure -> C:/dev/klc6/out/fan/analysis/doppler-comb.png
+json   -> C:/dev/klc6/out/fan/analysis/doppler-comb.json
+
+========================================================================
+13. REFINEMENTS
+========================================================================
+
+ 13a. Is the 2877.8 Hz / 17.88 m/s line (5.6 sigma) the 48th mains harmonic?
+    mains fundamental, fan-on session : 60.0024 Hz -> 48th harmonic at 2880.12 Hz
+    mains fundamental, empty-room 60 s: 60.0105 Hz -> 48th harmonic at 2880.50 Hz
+    the two 48th harmonics differ by 0.39 Hz = 0.3 FFT bins
+    2877.8 Hz sits 2.3 Hz from the fan-on 48th harmonic.
+    -> a mains drift of a few mHz moves the 48th harmonic by whole FFT bins, which
+       appears as a large per-bin prominence difference between sessions. MAINS,
+       not a blade tip. (FINDINGS already lists 2880.76 Hz at 12.3 dB in the
+       empty room, with no fan present.)
+
+ 13b. Harmonic comb search with mains bins NOTCHED (+-3 Hz of every 60 Hz multiple)
+    fan-on vs 6 s fan-off                best non-mains f0 =  88.50 Hz ( 1770 rpm 3-blade /  1062 rpm 5-blade)  +0.56 sigma
+    fan-on vs 60 s empty (best powered)  best non-mains f0 =  52.50 Hz ( 1050 rpm 3-blade /   630 rpm 5-blade)  +4.88 sigma
+    NULL max non-mains comb sigma over 200 fan-on-vs-fan-on partitions: mean +3.34  95th +4.36  max +5.05
+    -> observed +0.56 and +4.88 sigma, both BELOW the null 95th pct +4.36: NO BLADE-PASS COMB.
+
+ 13c. MATCHED-K control: 9 fan-on blocks vs the 9 fan-off blocks (equal averaging)
+    measured matched-K floor: 1.967 dB
+    best NON-mains sigma over 20 random 9-block fan-on draws: mean +4.05, max +4.99
+    (with 13094 bins the max of pure noise is expected near +4.0 sigma)
+
+ 13d. CADENCE: is the 60 Hz cadence the fan or the mains?
+    empty-room 60 s (50 kSa/s, NO fan) peak cadence 60.01 Hz  +8.8 dB over band median
+    fan-on chunks peaked at 60.01 / 59.97 Hz
+    -> the empty room shows the SAME 60 Hz cadence with the fan off. Mains amplitude
+       modulation, not a blade flash.
+    strongest NON-mains cadence: on0   32.81 Hz +1.8 dB, on1   18.64 Hz +1.8 dB  -> DISAGREE => not a real cadence
+
+ 13e. INJECTION THRESHOLD (fine scan) -> quantitative upper bound
+    line  -32 dB re in-band PSD floor:  0/10 at 5 sigma, mean   +2.4 sigma
+    line  -28 dB re in-band PSD floor:  0/10 at 5 sigma, mean   +3.9 sigma
+    line  -24 dB re in-band PSD floor:  7/10 at 5 sigma, mean   +5.6 sigma
+    line  -23 dB re in-band PSD floor: 10/10 at 5 sigma, mean   +7.0 sigma
+  -> DETECTION THRESHOLD -23 dB re the in-band PSD floor (-125.8 dB/Hz), i.e. a coherent Doppler line carrying
+     -68.2 dB ... expressed as line-to-in-band-noise in one 1.53 Hz bin after 50 s of averaging.
+     The fan produced NO such line anywhere in 20 Hz - 20 kHz.
+
+ 13f. VERDICT SUMMARY
+    positive control (moving person, FMCW, same statistics): +7.0 dB, 12.1 sigma, cross-half r = +0.98
+    fan, best non-mains line anywhere 20 Hz-20 kHz vs 6 s ref : +4.71 sigma (13094 bins searched)
+    fan, best non-mains comb                                 : +4.88 sigma (null 95th pct +4.36)
+    fan, cross-chunk correlation of the difference spectrum   : +0.0150 (null +0.0060; positive control was +0.98)
+    fan, broadband band power                                 : -0.97 dB (NEGATIVE - fan-on is quieter)
+
+json updated -> C:/dev/klc6/out/fan/analysis/doppler-comb.json
+
+========================================================================
+14. UPPER BOUND AND INDEPENDENT CROSS-CHECK
+========================================================================
+
+ 14a. What the -23 dB injection threshold means physically:
+    detectable Doppler line rms  = 8.10 uV
+    total fan-on IF rms          = 157.6 uV  (ADC LSB = 336 uV, so the line is 41x SMALLER than one LSB)
+    line-to-total-IF-power ratio = -25.8 dB
+    -> 50 s of coherent averaging buys enough processing gain to see a Doppler line
+       far below one ADC code. The fan produced nothing at that level.
+
+ 14b. Broadband bound: any broad Doppler wing from the fan
+    measured in-band power difference (fan-on minus fan-off, mains notched) = -0.97 dB
+    the sign is NEGATIVE, so the limit is set by the session-to-session gain offset
+    (fan-on IF rms 157.6 uV vs fan-off 173.6 uV = -0.84 dB, a receiver/session
+    difference, not the fan). Any broadband fan contribution is therefore below
+    roughly 1 dB of the in-band noise power and cannot be separated from that offset.
+
+ 14c. INDEPENDENT CROSS-CHECK: FMCW consecutive-chirp MTI on the fan-on capture,
+      using the exact pipeline that scored 12 sigma on the moving person.
+    moving person (control)    best  2.50 m   +6.67 dB   +9.49 sigma   cross-half r = +0.959
+    FAN ON                     best  5.00 m   +0.43 dB   +0.57 sigma   cross-half r = +0.467
+    -> the same pipeline that finds the person at ~12 sigma with r=+0.96 finds the
+       fan at +0.6 sigma with cross-half r = +0.467.
+
+    cfgB range-Doppler (200 CPIs, zero-Doppler notched, 0.5-8 m):
+      peak-over-median per CPI: mean 11.40 dB, std 0.80 dB, max 13.96 dB
+      (a moving target parked in one range-Doppler cell would push this well above the
+       CPI-to-CPI scatter; it does not.)
+
+json updated -> C:/dev/klc6/out/fan/analysis/doppler-comb.json

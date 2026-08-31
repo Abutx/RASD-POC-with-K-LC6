@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*.swp
+
+# Scratch output from ad-hoc exploration. Named datasets and the analysis
+# artifacts under out/ ARE tracked -- they are the provenance for every number
+# in docs/FINDINGS.md and docs/FAN_DETECTION.md.
+out/**/_*.py
+out/**/explore*.py

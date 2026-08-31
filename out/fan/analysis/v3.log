@@ -1,0 +1,216 @@
+
+==============================================================================
+1. QUANTISATION / INTEGRITY AUDIT  (ground rule 2)
+==============================================================================
+fanON_100k_a  fs=100000 dur= 25.00s N= 2500000  distinct_codes= 5  step=336.0uV(1.00 LSB)  acRMS=157.6uV(0.47 LSB)  zeros=0
+fanON_100k_b  fs=100000 dur= 25.00s N= 2500000  distinct_codes= 5  step=336.0uV(1.00 LSB)  acRMS=153.5uV(0.46 LSB)  zeros=0
+fanOFF_100k   fs=100000 dur=  6.00s N=  600000  distinct_codes= 5  step=336.0uV(1.00 LSB)  acRMS=173.6uV(0.52 LSB)  zeros=0
+fanON_50k_a   fs= 50000 dur= 60.00s N= 3000000  distinct_codes= 4  step=336.0uV(1.00 LSB)  acRMS=118.3uV(0.35 LSB)  zeros=0
+fanON_50k_b   fs= 50000 dur= 60.00s N= 3000000  distinct_codes= 4  step=336.0uV(1.00 LSB)  acRMS=108.1uV(0.32 LSB)  zeros=0
+fanOFF_50k    fs= 50000 dur= 59.84s N= 2991808  distinct_codes= 4  step=336.0uV(1.00 LSB)  acRMS=158.4uV(0.47 LSB)  zeros=0
+
+  -> 4-5 distinct ADC codes; AC rms is HALF an LSB.  The IF is effectively
+     2-bit.  Absolute level is set by where DC sits between code edges, not
+     by target return -- see the band powers below, where fan-ON is LOWER
+     than fan-OFF everywhere.  Every statistic here is SELF-NORMALISED.
+
+  Broadband Welch power, context only (dB):
+    fanON_100k_a  0.3-1.2k   -91.7  1.2-3k   -90.0  3-6k   -88.4  6-12k   -86.0
+    fanON_100k_b  0.3-1.2k   -91.9  1.2-3k   -90.2  3-6k   -88.6  6-12k   -86.3
+    fanOFF_100k   0.3-1.2k   -90.8  1.2-3k   -89.1  3-6k   -87.6  6-12k   -85.2
+    fanON_50k_a   0.3-1.2k   -91.8  1.2-3k   -89.7  3-6k   -88.0  6-12k   -85.5
+    fanON_50k_b   0.3-1.2k   -92.6  1.2-3k   -90.5  3-6k   -88.8  6-12k   -86.2
+    fanOFF_50k    0.3-1.2k   -89.6  1.2-3k   -87.8  3-6k   -86.2  6-12k   -83.7
+
+==============================================================================
+2. POSITIVE CONTROL - the known moving person (FMCW cfg A)
+==============================================================================
+Same estimator shape as the fan analysis: per-channel envelope ->
+periodogram -> average across independent channels -> LOCAL measured
+floor.  Channels here are independent RANGE BINS spaced by the 0.83 m
+MEASURED resolution; for the CW fan they are carrier SUB-BANDS.
+Envelope frame rate = ramp rate = 50 Hz.
+
+  moving : 240 chirps (4.80 s), 6 independent range bins | MTI-envelope mean  -20.47 dB | cadence peak 2.09 Hz at  5.57 sigma over the LOCAL measured floor (21 bins searched)
+  static : 160 chirps (3.20 s), 6 independent range bins | MTI-envelope mean  -27.24 dB | cadence peak 2.52 Hz at  1.20 sigma over the LOCAL measured floor (14 bins searched)
+  fan_on : 240 chirps (4.80 s), 6 independent range bins | MTI-envelope mean  -28.16 dB | cadence peak 2.93 Hz at  2.99 sigma over the LOCAL measured floor (21 bins searched)
+
+  Sanity vs FINDINGS: MTI energy moving - static = +6.77 dB in the 1.0-2.5 m gate (FINDINGS: +6.69 dB / 12 sigma at 1.5 m).  Reproduced.
+  Multiple comparisons: 21 cadence bins searched; 5.57 sigma expected by chance 0.0000 times.
+  Empty-room static control reaches only 1.20 sigma -> the estimator does not generate its own peaks.
+  Recovered 2.09 Hz = a walking cadence of ~2.1 steps/s.
+
+  POSITIVE CONTROL VERDICT: PASS  (5.57 sigma)
+  (A first attempt using a Welch-averaged SINGLE-gate envelope reached only
+   0.6 sigma on this same person.  Channel averaging is what makes the
+   method work, and it is the version applied to the fan.)
+
+==============================================================================
+2b. SECOND POSITIVE CONTROL, ENTIRELY IN CW: the 60 Hz mains AM
+==============================================================================
+The mains harmonics are a real, known amplitude modulation of this CW IF.
+With the carrier-domain mains notch DISABLED the pipeline must recover a
+60 Hz envelope line.  This validates the CW envelope chain end to end.
+
+  notch OFF      (K=14 sub-bands): 60 Hz envelope line  incoherent   +228.0 sigma   cross-sub-band coherent   +358.8 sigma
+  notch +/-5 Hz  (K=14 sub-bands): 60 Hz envelope line  incoherent   +198.5 sigma   cross-sub-band coherent   +357.9 sigma
+
+  -> the CW envelope chain detects a genuine AM at enormous sigma.  CW
+     POSITIVE CONTROL: PASS.  It also shows why a 60 Hz envelope line can
+     never be called a blade line here: the fan is an electrical load, and
+     FINDINGS section 3 measures 35.9 dB of 60 Hz in the EMPTY room.
+
+==============================================================================
+3. FAN-ON vs FAN-OFF - CW envelope periodicity (50 kSa/s, 60 s MATCHED)
+==============================================================================
+Blade counts assumed: N in (3, 4, 5).  Shaft speed searched 200-1800 RPM.
+=> blade-pass modulation 10-150 Hz; search widened to 3-200 Hz.
+=> blade-tip Doppler 674-6067 Hz for r_tip=0.20 m; the carrier bands below cover 500-12000 Hz = 3.1-74.6 m/s.
+
+  Best NON-MAINS line per band (mains bins, +/-1 Hz of a 60 Hz multiple,
+  are excluded from the peak search and reported separately):
+
+  band Hz        condition        peak Hz   sig_inc   sig_coh |  60Hz sig         K
+  500-1800       fanON_50k_a       56.396      5.30      5.30 |     137.3         1
+  500-1800       fanON_50k_b       58.960      4.69      4.69 |      84.5         1
+  500-1800       fanOFF_50k         3.052      4.23      4.23 |     115.4         1
+
+  1800-4000      fanON_50k_a      143.433      3.96      3.83 |     122.5         2
+  1800-4000      fanON_50k_b       38.818      4.44      3.02 |      90.2         2
+  1800-4000      fanOFF_50k       140.625      4.22      3.32 |      97.5         2
+
+  4000-8000      fanON_50k_a        5.005      4.69      5.06 |     130.9         5
+  4000-8000      fanON_50k_b       57.251      6.03      8.03 |      83.8         5
+  4000-8000      fanOFF_50k         3.662      5.37      8.32 |     108.0         5
+
+  8000-12000     fanON_50k_a       44.312      4.02      3.15 |     135.1         5
+  8000-12000     fanON_50k_b      152.222      4.03      2.75 |      71.0         5
+  8000-12000     fanOFF_50k         3.052      7.81      8.33 |     119.3         5
+
+  500-12000      fanON_50k_a       56.763      3.56      3.74 |     198.5        14
+  500-12000      fanON_50k_b       57.251      4.85      6.24 |     103.3        14
+  500-12000      fanOFF_50k         3.662      7.10      8.08 |     145.2        14
+
+
+==============================================================================
+4. PRIMARY BAND 500-12000 Hz: MEASURED FLOOR AND SIGNIFICANCE
+==============================================================================
+  14 carrier sub-bands, Welch nper=8192 -> modulation resolution 0.122 Hz.
+  1565 non-mains bins searched in 3-200 Hz.
+
+  WHY THE FLOOR IS LOCAL, NOT GLOBAL.  A first pass measured the floor in
+  a single 230-480 Hz control band.  Against that floor the EMPTY ROOM
+  showed 430 of 1614 bins above '5 sigma' -- the envelope spectrum is
+  strongly coloured, so a floor measured elsewhere is simply the wrong
+  floor.  A running median + running MAD with a guard band fixes it, and
+  the empty-room false-alarm counts below are the proof that it is fixed.
+
+  Top 8 NON-MAINS candidates, required present in both independent runs:
+   f_mod Hz  lag ms   z_ON_a   z_ON_b    z_OFF  min(a,b)  implied RPM N=3/4/5
+      3.906   256.0     3.18     3.22     3.74      3.18     78/   59/   47
+     58.594    17.1     3.10     4.71     2.75      3.10   1172/  879/  703
+      3.052   327.7     2.77     3.17     6.11      2.77     61/   46/   37
+      3.784   264.3     3.22     2.71     5.05      2.71     76/   57/   45
+     57.983    17.2     2.71     2.66     1.74      2.66   1160/  870/  696
+     58.716    17.0     2.57     3.77     2.55      2.57   1174/  881/  705
+     61.401    16.3     2.51     3.65     1.96      2.51   1228/  921/  737
+     38.696    25.8     2.33     2.35    -0.11      2.33    774/  580/  464
+
+  Best NON-MAINS line in BOTH fan-ON runs: 3.18 sigma at 3.906 Hz (lag 256.0 ms)
+  Best NON-MAINS line in the EMPTY ROOM     : 7.10 sigma  <- same size
+  For reference the 60 Hz mains line reads ON 198.5 / OFF 145.2 sigma -- it is
+  present with the fan OFF, so it is mains, not a blade.
+
+  Multiple comparisons over 1565 non-mains bins:
+    3-sigma expected by chance   2.11 | observed  ON_a  10  ON_b  16  OFF   9
+    4-sigma expected by chance   0.05 | observed  ON_a   0  ON_b   3  OFF   4
+    5-sigma expected by chance   0.00 | observed  ON_a   0  ON_b   0  OFF   3
+  The empty room produces as many high bins as the fan-on room.  That is
+  the operational definition of no detection.
+  Mains false-tag rate over 3-200 Hz at +/-0.5 Hz: 1.55% of bins
+  Mains false-tag rate over 3-200 Hz at +/-1.0 Hz: 3.04% of bins
+  Mains false-tag rate over 3-200 Hz at +/-2.0 Hz: 6.01% of bins
+  (the ground rule's ~4%% figure is a CARRIER-domain effect above 3 kHz.
+   This is a MODULATION-domain search with only 3 harmonics inside the
+   band, so a mains tag here IS meaningful and is used as an exclusion.)
+
+==============================================================================
+5. DIRECT FAN-ON minus FAN-OFF TEST (signed, one-sided, unequal n handled)
+==============================================================================
+A fan detection requires fan-ON > fan-OFF.  The test is therefore SIGNED
+and one-sided; an earlier unsigned version reported '4.23 sigma' at a bin
+where fan-OFF was in fact the HIGHER of the two.
+
+50 kSa/s matched pair, 7.5 s segments:
+  n_on=16 segments, n_off=8 segments; 391 non-mains bins; nper=2048
+  largest POSITIVE normal-equivalent sigma = 3.16 at 188.965 Hz (lag 5.3 ms, t=3.80, dof=16.2)
+  3-sigma bins expected by chance 0.53, observed 1
+  most negative sigma (fan-OFF higher) = -3.26 -- a two-sided sanity check:
+  the distribution is symmetric about zero, i.e. pure noise.
+
+100 kSa/s cross-check.  UNEQUAL DWELL: 25 s x2 fan-on vs 6 s fan-off.
+Both are cut into 3 s segments so the per-segment estimator is IDENTICAL;
+the unequal segment count then enters only through the Welch standard
+error and the Welch-Satterthwaite dof, which deflates a 2-segment
+reference to its true confidence.
+  n_on=16  n_off=2 (only 2 -> dof about 15.0, not infinity)
+  largest POSITIVE normal-equivalent sigma = 4.31 at 71.289 Hz (t=6.23, dof=15.0), 195 non-mains bins
+  treating t as a z (dof=inf) would have read 6.23 -- the unequal-dwell correction is worth 1.92 sigma here.
+
+==============================================================================
+6. BLADE-FLASH HARMONIC-COMB SEARCH
+==============================================================================
+A blade flash is impulsive, so it should put power at f_bp AND its
+harmonics.  Comb score = mean local-CFAR sigma over k*f0, k=1..4, scanned
+across the whole blade-pass hypothesis space 10-150 Hz.
+
+  fanON_50k_a  : best NON-MAINS comb f0 =  30.020 Hz, score 50.33 sigma | RPM N=3/4/5: 600/450/360
+  fanON_50k_b  : best NON-MAINS comb f0 =  30.020 Hz, score 27.94 sigma | RPM N=3/4/5: 600/450/360
+  fanOFF_50k   : best NON-MAINS comb f0 =  30.020 Hz, score 38.07 sigma | RPM N=3/4/5: 600/450/360
+
+  The empty room scores as high as the fan-on room -> no fan-specific comb.
+
+==============================================================================
+7. ENVELOPE AUTOCORRELATION (the assigned primary statistic)
+==============================================================================
+  Band 500-12000 Hz, carrier mains notch +/-5 Hz, envelope at 4000 Hz (lag resolution 0.25 ms).
+  The mains comb is ALSO removed in the envelope domain, so a 16.7 ms lag
+  cannot survive as a disguised blade period.
+  Blade-pass lag window 6.7-100 ms.
+
+    fanON_50k_a   WITH envelope mains notch: peak +0.0884 at  16.56 ms ( 60.39 Hz)  tail sd 0.0055 -> 16.13 sigma
+                  WITHOUT it:                peak +0.2435 at  16.56 ms ( 60.39 Hz)  <- the mains period, identical fan ON
+    fanON_50k_b   WITH envelope mains notch: peak +0.0909 at  16.56 ms ( 60.39 Hz)  tail sd 0.0090 -> 10.04 sigma
+                  WITHOUT it:                peak +0.2033 at  16.56 ms ( 60.39 Hz)  <- the mains period, identical fan ON
+    fanOFF_50k    WITH envelope mains notch: peak +0.0626 at  16.80 ms ( 59.52 Hz)  tail sd 0.0046 -> 13.65 sigma
+                  WITHOUT it:                peak +0.1854 at  16.56 ms ( 60.39 Hz)  <- the mains period, present with the fan OFF too
+
+  Fan-ON and fan-OFF autocorrelations are the same height at the same lag.
+  Fan-ON minus fan-OFF ACF peak = +0.0258 against a MEASURED fan-OFF tail sd of 0.0046 = 5.61 sigma.
+
+==============================================================================
+8. FMCW CROSS-CHECK on the fan (identical config to the positive control)
+==============================================================================
+  MTI-envelope energy 1.0-2.5 m: fan_on -28.16 dB, empty room -27.24 dB, difference -0.92 dB.  The person was +6.77 dB.
+  fan_on cadence-band periodicity peak 2.93 Hz at 2.99 sigma (empty-room reference 1.20 sigma) -> below the 5-sigma bar.
+  2.93 Hz would imply 59 RPM with 3 blades -- not a running fan.
+  The fan is 2.5 m away, inside the range gate that showed the person at
+  +6.8 dB.  It returns LESS than the empty room.
+
+==============================================================================
+9. SENSITIVITY - what blade AM depth WOULD this pipeline have caught?
+==============================================================================
+  AM depth  5.00% of the IF ->    32.33 sigma recovered
+  AM depth  2.00% of the IF ->     4.86 sigma recovered
+  AM depth  1.00% of the IF ->     1.00 sigma recovered
+  AM depth  0.50% of the IF ->     0.04 sigma recovered
+  AM depth  0.20% of the IF ->    -0.21 sigma recovered
+  AM depth  0.10% of the IF ->    -0.24 sigma recovered
+
+  5-sigma detection threshold of this pipeline on this 60 s record:
+  AM depth ~%.2f%% of the IF.  A blade flash shallower than that is
+Traceback (most recent call last):
+  File "C:\dev\klc6\out\fan\analysis\envelope-periodicity.py", line 598, in <module>
+    print("  invisible here." % ((m5 or float("nan")) * 100))
+          ~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TypeError: not all arguments converted during string formatting

@@ -1,0 +1,621 @@
+
+==============================================================================
+A. DATA INTEGRITY / QUANTISATION  (ground rule 2)
+==============================================================================
+fanON_100k_0    2500000 @   100 kSa/s  25.0 s  codes= 5  LSB= 336.0 uV  rms= 157.6 uV  DC= 11.866 mV  zeros=0
+fanON_100k_1    2500000 @   100 kSa/s  25.0 s  codes= 5  LSB= 336.0 uV  rms= 153.5 uV  DC= 11.847 mV  zeros=0
+fanOFF_100k      600000 @   100 kSa/s   6.0 s  codes= 5  LSB= 336.0 uV  rms= 173.6 uV  DC= 12.996 mV  zeros=0
+fanON_50k_a     3000000 @    50 kSa/s  60.0 s  codes= 4  LSB= 336.0 uV  rms= 118.3 uV  DC= 11.760 mV  zeros=0
+fanON_50k_b     3000000 @    50 kSa/s  60.0 s  codes= 4  LSB= 336.0 uV  rms= 108.1 uV  DC= 11.778 mV  zeros=0
+fanOFF_50k      2991808 @    50 kSa/s  59.8 s  codes= 4  LSB= 336.0 uV  rms= 158.4 uV  DC= 13.250 mV  zeros=0
+
+  Only 4-5 distinct ADC codes in every record (LSB 336 uV), as FINDINGS 1.1
+  predicts. Detection depends entirely on FFT processing gain.
+  Fan-ON records sit ~1.2-1.5 mV lower in DC and ~1.5-2 dB lower in
+  broadband floor than the fan-OFF references, which came from a different
+  session. ABSOLUTE level is therefore not comparable between conditions;
+  only spectral SHAPE is. Cepstrum/HPS use shape only.
+
+==============================================================================
+B. POSITIVE CONTROLS  (does the method work at all, on real data?)
+==============================================================================
+
+B1. REAL known comb: FMCW Config-A ramp feedthrough, truth = 50.000 Hz
+    cepstrum  -> 50.01 Hz  (313 sigma over its own measured floor)
+    HPS(K=5)  -> 150.14 Hz  (HPS also locks onto 3x = 150 Hz, the standard
+                 HPS harmonic ambiguity; the cepstrum does not suffer it)
+
+B2. REAL known comb #2: 60 Hz mains in the empty-room baseline (FINDINGS 3)
+    cepstrum  -> 60.41 Hz  (6.7 sigma)   truth 60.00 Hz
+    HPS(K=5)  -> 60.01 Hz
+    quefrency bin = 0.338 ms wide = +-1.19 Hz at a 60 Hz spacing, so 59.4 and
+    60.0 Hz are the same cepstral bin. The mains cepstral peak is weak (only
+    h=1,3,5 stand out, so the comb is far from uniform) but HPS nails it.
+
+B3. KNOWN MOVING PERSON via consecutive-chirp MTI (FINDINGS 5.5: +6.7 dB,
+    12 sigma at 1.5 m). Not my method -- this checks that the person really
+    is in the file I loaded and that my sigma machinery reproduces it.
+    MEASURED split-half floor (same condition, two halves) = 0.55 dB
+    R= 1.0 m  moving  -34.44  static  -39.60  diff +5.16 dB  (  9.4 sigma)
+    R= 1.5 m  moving  -28.93  static  -35.79  diff +6.85 dB  ( 12.4 sigma)
+    R= 2.5 m  moving  -29.43  static  -36.10  diff +6.67 dB  ( 12.1 sigma)
+    R= 4.0 m  moving  -37.42  static  -39.30  diff +1.87 dB  (  3.4 sigma)
+
+B4. KNOWN MOVING PERSON via CEPSTRUM/HPS (the assigned method itself).
+    12 vs 8 blocks of 0.4 s, df=12.2 Hz, 308 quefrency bins searched
+    TEST  moving vs static  : largest |sigma| = 3.88 at spacing 52.4 Hz
+    NULL  static 1st vs 2nd half (4v4): largest |sigma| = 5.41
+    NULL  moving 1st vs 2nd half (6v6): largest |sigma| = 3.80
+    -> cepstrum/HPS DOES NOT DETECT the walking person.
+    Expected: a walking human is not a frequency-periodic comb at any
+    spacing this data resolves (df=12 Hz here; gait cadence is ~2 Hz).
+
+B5. SENSITIVITY CALIBRATION. A synthetic blade comb (spacing 73.0 Hz --
+    deliberately NOT a multiple of 60 -- lines from 73 Hz to 4.0 kHz, random
+    phase) is added to the FIRST half of the real empty-room record; the
+    SECOND half stays clean and acts as the reference. Identical pipeline.
+    NOTE a comb of spacing D also puts cepstral rahmonics at q = n/D, i.e.
+    apparent spacings D/2, D/3, ... The pass criterion below is the sigma AT
+    the true quefrency 1/73 s, not the location of the global maximum
+    (which often lands on a rahmonic).
+    comb  -46 dB re IF rms (54 lines) -> global max   45.15 Hz @   +5.4 sig                 ;  sigma AT 73.0 Hz =   -1.2
+    comb  -40 dB re IF rms (54 lines) -> global max   45.15 Hz @   +5.0 sig                 ;  sigma AT 73.0 Hz =   -1.7
+    comb  -34 dB re IF rms (54 lines) -> global max   45.15 Hz @   +4.8 sig                 ;  sigma AT 73.0 Hz =   -2.3
+    comb  -30 dB re IF rms (54 lines) -> global max   45.15 Hz @   +4.7 sig                 ;  sigma AT 73.0 Hz =   -0.7
+    comb  -28 dB re IF rms (54 lines) -> global max   45.15 Hz @   +4.5 sig                 ;  sigma AT 73.0 Hz =   +0.7
+    comb  -26 dB re IF rms (54 lines) -> global max   12.16 Hz @   +5.1 sig (73/n rahmonic) ;  sigma AT 73.0 Hz =   +2.3
+    comb  -24 dB re IF rms (54 lines) -> global max   12.16 Hz @   +8.8 sig (73/n rahmonic) ;  sigma AT 73.0 Hz =   +4.8
+    comb  -22 dB re IF rms (54 lines) -> global max   12.14 Hz @  +12.6 sig (73/n rahmonic) ;  sigma AT 73.0 Hz =   +6.9
+    comb  -20 dB re IF rms (54 lines) -> global max   12.16 Hz @  +16.2 sig (73/n rahmonic) ;  sigma AT 73.0 Hz =  +10.0
+    comb  -18 dB re IF rms (54 lines) -> global max   12.14 Hz @  +16.8 sig (73/n rahmonic) ;  sigma AT 73.0 Hz =  +12.1
+    -> the detector recovers the correct spacing above 5 sigma once the comb
+       carries >= -22 dB relative to the wideband IF rms.
+
+==============================================================================
+C. FAN-ON vs FAN-OFF, cepstrum, matched 50 kSa/s / 60 s, EQUAL block counts
+==============================================================================
+  band 40-6000 Hz (0.25-37.3 m/s), df=3.052 Hz, 1953 bins, 8 blocks x 7.5 s
+  707 quefrency bins searched -> comb spacings 8.3-667 Hz.
+  A household fan is 900-1600 rpm with 3-5 blades: blade-pass 45-133 Hz,
+  rotation 15-27 Hz. Both lie inside the searched span.
+
+  TEST (fan present vs absent):
+  fan ON run a  vs  fan OFF          max|sigma| =  4.42 at spacing   82.78 Hz
+  fan ON run b  vs  fan OFF          max|sigma| =  4.25 at spacing    9.28 Hz
+
+  NULL CONTROLS (same condition on both sides -- these MEASURE the real
+  false-alarm floor of the whole detector, session drift included):
+  fan ON a      vs  fan ON b         max|sigma| =  4.29 at spacing   11.94 Hz
+  fan OFF 1st half vs 2nd half       max|sigma| =  5.31 at spacing   45.15 Hz
+  fan ON a 1st half vs 2nd half      max|sigma| =  7.83
+
+  pooled fan ON (16 blocks) vs fan OFF (8 blocks): max|sigma| = 4.26 at 82.78 Hz
+  top 8 quefrency bins of the pooled test:
+     q (ms)  spacing Hz     d_ceps        SE    sigma  60Hz-mult?
+     12.080       82.78    +26.622     6.252    +4.26  -
+     95.133       10.51    +13.319     3.711    +3.59  -
+      8.557      116.86    +28.496     8.286    +3.44  -
+    107.717        9.28     +8.893     2.638    +3.37  -
+     45.469       21.99    +20.071     6.161    +3.26  -
+     49.999       20.00    +31.594     9.756    +3.24  -
+    101.173        9.88    -10.095     3.127    -3.23  -
+     63.086       15.85    -18.328     5.754    -3.19  -
+
+  Theory says |z|>3 should occur 1.9 times in 707 bins by chance.
+  MEASURED null controls put the real floor at max|sigma| = 4.29 / 5.31 / 7.83
+  Repeatability r of the ON-minus-OFF cepstral difference across the two
+  independent fan-ON runs: +0.540. Same statistic with two halves of the
+  fan-OFF record standing in for 'fan ON': +0.454 -- so that much correlation
+  comes from the SHARED reference alone, not from the fan.
+
+  RESTRICTED SEARCH. Constraining the hypothesis to physically plausible
+  blade-pass rates (40-140 Hz: 3-5 blades at 800-1700 rpm) shrinks the
+  search space and so lowers the bar a real detection has to clear:
+  107 quefrency bins; |z|>3 expected 0.29 times by chance.
+    fan ON a vs OFF    max|sigma| =  4.42 at  82.78 Hz blade-pass (1656 rpm on 3 blades, 993 on 5)
+    fan ON b vs OFF    max|sigma| =  3.65 at 116.86 Hz blade-pass (2337 rpm on 3 blades, 1402 on 5)
+    pooled ON vs OFF   max|sigma| =  4.26 at  82.78 Hz blade-pass (1656 rpm on 3 blades, 993 on 5)
+    NULL ON a vs ON b  max|sigma| =  2.78 at  65.50 Hz blade-pass (1310 rpm on 3 blades, 786 on 5)
+
+  CANDIDATE CONSISTENCY. A real blade comb must appear at the SAME spacing
+  in both independent fan-ON runs. Evaluating every test at the quefrency
+  picked by the pooled test (82.78 Hz spacing):
+    fan ON a vs OFF    sigma at 82.78 Hz =  +4.42
+    fan ON b vs OFF    sigma at 82.78 Hz =  +2.21
+    NULL ON a vs ON b  sigma at 82.78 Hz =  +1.89
+    run a picked this bin; run b gives +2.21 sigma there. A blade comb
+    cannot be present in one 60 s fan-ON record and absent in the next.
+
+  60 Hz RAHMONIC FAMILY (ground rule 1). The prominent cepstral peaks in
+  BOTH conditions sit at q = n/60 s -- the mains comb. Difference there:
+    q= 16.67 ms (n=1, spacing 60.0 Hz): ON-OFF  -0.90 sigma  |  NULL  +0.32
+    q= 33.33 ms (n=2, spacing 30.0 Hz): ON-OFF  +1.25 sigma  |  NULL  -0.68
+    q= 50.00 ms (n=3, spacing 20.0 Hz): ON-OFF  +3.24 sigma  |  NULL  +0.26
+    q= 66.67 ms (n=4, spacing 15.0 Hz): ON-OFF  -0.86 sigma  |  NULL  +0.69
+    q= 83.33 ms (n=5, spacing 12.0 Hz): ON-OFF  +3.03 sigma  |  NULL  -1.52
+    q=100.00 ms (n=6, spacing 10.0 Hz): ON-OFF  -0.09 sigma  |  NULL  -0.70
+    q=116.67 ms (n=7, spacing 8.6 Hz): ON-OFF  -0.44 sigma  |  NULL  +0.76
+  The mains rahmonics do not grow with the fan, so the fan is not even
+  detectable as an ELECTRICAL load on this receiver, let alone as a target.
+
+==============================================================================
+D. HARMONIC PRODUCT SPECTRUM, fan-ON vs fan-OFF
+==============================================================================
+  K=3  scan 43-600 Hz (3000 trials, 6.8% tagged 60 Hz multiple)
+       best overall    579.93 Hz  +0.454 dB  +4.27 sigma  
+       best non-mains  579.93 Hz  +4.27 sigma
+       same-condition null (ON a vs ON b): max|sigma| +3.52
+  K=5  scan 43-600 Hz (3000 trials, 6.8% tagged 60 Hz multiple)
+       best overall    579.93 Hz  +0.265 dB  +3.57 sigma  
+       best non-mains  579.93 Hz  +3.57 sigma
+       same-condition null (ON a vs ON b): max|sigma| +5.88
+
+==============================================================================
+E. MAINS COMB: does switching the fan on raise it? (ground rule 1)
+==============================================================================
+  fanON_50k_a  dB over median at 60*h (h=1,2,3,4,5,8,16,32,48):   21.7    8.1   16.2    6.9   10.1    3.2    2.3    1.0    4.6
+  fanON_50k_b  dB over median at 60*h (h=1,2,3,4,5,8,16,32,48):   21.4    8.8   16.0    6.8   10.2    2.8    2.0    1.5    4.2
+  fanOFF_50k   dB over median at 60*h (h=1,2,3,4,5,8,16,32,48):   23.7    8.0   17.4    6.5   11.6    2.5    1.6    1.6    3.4
+
+  The mains comb is NOT stronger with the fan on -- the fundamental is
+  ~2 dB WEAKER, tracking the same overall floor offset seen in A. So no
+  candidate blade line here can be explained away as extra mains pickup,
+  and equally no mains growth is masquerading as a fan detection.
+  Computed false-tag rate of a '+-2 Hz of a 60 Hz multiple' rule above
+  3 kHz: 6.67% of random frequencies. High-order mains tags are therefore
+  treated as uninformative and are not used as evidence either way.
+
+==============================================================================
+F. CROSS-CHECK at 100 kSa/s (25 s x2 fan-ON vs 6 s fan-OFF)
+==============================================================================
+  Ground rule 5 in force. Blocks are forced to EQUAL DURATION (2.0 s) on
+  both sides, so each block carries the same number of Welch averages and
+  the two conditions have the same per-block scatter. What cannot be equal
+  is the NUMBER of blocks: 12 for each 25 s fan-ON record, only 3 for the
+  6 s fan-OFF reference. The 1/n1+1/n2 term carries that, but a variance
+  estimated from 3 blocks (2 dof) is itself very noisy, so sigma here is
+  unstable. The matched-n null below MEASURES how much that inflates it.
+  fan ON 0 vs fan OFF            max|sigma| =  9.06 at spacing   12.32 Hz
+  fan ON 1 vs fan OFF            max|sigma| =  8.16 at spacing   12.32 Hz
+  fan ON 0 vs fan ON 1           max|sigma| =  3.51 at spacing   17.44 Hz  <- NULL, 12v12
+  fan ON 0 early vs fan ON 0 late max|sigma| =  7.53  <- NULL, 3v3 same record
+  fan ON 0 (12) vs fan ON 1 (3)  max|sigma| =  5.85  <- NULL, 12v3, same block counts as the test
+  The 12-vs-3 SAME-CONDITION null reaches 5.9 sigma, i.e. the whole
+  apparent significance of the 100 kSa/s test is an artefact of estimating
+  a variance from 3 reference blocks. This dataset cannot decide anything;
+  the duration-matched 50 kSa/s comparison in section C is the real test.
+  CROSS-RATE CHECK. The 100 kSa/s candidate spacing is 12.32 Hz. In the
+  duration-matched 50 kSa/s test (section C) that same spacing gives:
+    fan ON a vs OFF +0.43 sigma; fan ON b vs OFF +0.46 sigma; NULL -0.05
+  The two rates do not agree, so the 100 kSa/s feature belongs to its shared
+  6 s reference, not to the fan.
+
+==============================================================================
+G. IS THE FAN VISIBLE BY ANY MEANS? (context for the null)
+==============================================================================
+  FMCW cfgB, 200 CPIs integrated, moving-target (|v|>0.25 m/s) range profile:
+    R= 1.0 m   -45.35 dB
+    R= 2.0 m   -42.12 dB
+    R= 2.5 m   -42.23 dB
+    R= 3.0 m   -42.54 dB
+    R= 4.0 m   -42.85 dB
+    R= 6.0 m   -43.03 dB
+  cfgB PRF=1000 Hz -> unambiguous |v| < 3.11 m/s (500 Hz). A household fan
+  blade tip runs 15-30 m/s (2.4-4.8 kHz), so cfgB ALIASES it and cannot
+  confirm or deny blade Doppler. CW at 50-100 kSa/s can, so the CW records
+  carry the whole argument.
+
+  CW broadband check: median PSD of each band MINUS that record's own
+  15-20 kHz reference band, so the session gain offset cancels.
+    fanON_50k_a     2.82    1.52    1.01    0.47    0.09
+    fanON_50k_b     2.71    1.49    0.93    0.48    0.12
+    fanOFF_50k      3.32    1.77    1.14    0.56    0.10
+    bands (Hz): 200-600 600-1500 1500-3000 3000-6000 6000-10000
+
+  Quantitative bound on ANY blade micro-Doppler energy, block statistics:
+  Every band comes out NEGATIVE (fan-ON lower). That is not a negative fan
+  return -- it is a residual session systematic of 0.02-0.5 dB that survives
+  the reference-band normalisation. So the honest bound on a fan excess is
+  |systematic| + 2*SE, not the one-sided upper limit:
+      200-  600 Hz ( 1.2- 3.7 m/s): diff -0.518 dB (-6.0 sig); fan excess < 0.692 dB -> any fan echo >= 7.6 dB BELOW the noise here
+      600- 1500 Hz ( 3.7- 9.3 m/s): diff -0.309 dB (-4.8 sig); fan excess < 0.438 dB -> any fan echo >= 9.7 dB BELOW the noise here
+     1500- 3000 Hz ( 9.3-18.6 m/s): diff -0.153 dB (-2.9 sig); fan excess < 0.260 dB -> any fan echo >= 12.1 dB BELOW the noise here
+     3000- 6000 Hz (18.6-37.3 m/s): diff -0.081 dB (-3.2 sig); fan excess < 0.132 dB -> any fan echo >= 15.1 dB BELOW the noise here
+     6000-10000 Hz (37.3-62.1 m/s): diff -0.021 dB (-1.3 sig); fan excess < 0.053 dB -> any fan echo >= 19.1 dB BELOW the noise here
+    i.e. 1.2-3.7 3.7-9.3 9.3-18.6 18.6-37.3 37.3-62.1 m/s
+
+  A 40-50 cm household fan at 900-1600 rpm has a blade tip at 19-42 m/s,
+  i.e. 3.0-6.7 kHz Doppler. That is precisely the 3000-6000 Hz row above,
+  where the bound is tightest and nothing appears.
+
+figure -> C:/dev/klc6/out/fan/analysis/cepstrum-hps.png
+
+==============================================================================
+VERDICT
+==============================================================================
+  best fan-ON-vs-fan-OFF cepstral statistic anywhere : 4.42 sigma
+  worst SAME-CONDITION null with the same detector    : 7.83 sigma
+  best HPS statistic (K=3/K=5)                        : 4.27 / 3.57 sigma
+  matching HPS same-condition nulls                   : 3.52 / 5.88 sigma
+  candidate at 82.78 Hz: run a +4.42, run b +2.21 -> not repeatable
+
+  NO BLADE COMB DETECTED. The test statistic never exceeds the measured
+  same-condition false-alarm floor, and the best candidate does not repeat
+  across two independent 60 s fan-ON captures.
+  Method sensitivity (B5): a blade comb would have been found at >5 sigma
+  if it carried >= -22 dB relative to the IF rms. It does not.
+
+==============================================================================
+SUMMARY JSON
+==============================================================================
+{
+ "integrity": {
+  "fanON_100k_0": {
+   "n": 2500000,
+   "fs": 100000.0,
+   "dur": 25.0,
+   "ncodes": 5,
+   "lsb_uV": 336.0232952565462,
+   "rms_uV": 157.56026012308035,
+   "dc_mV": 11.865704364489549,
+   "nzero": 0
+  },
+  "fanON_100k_1": {
+   "n": 2500000,
+   "fs": 100000.0,
+   "dur": 25.0,
+   "ncodes": 5,
+   "lsb_uV": 336.0232952565462,
+   "rms_uV": 153.47112688147135,
+   "dc_mV": 11.846711790204376,
+   "nzero": 0
+  },
+  "fanOFF_100k": {
+   "n": 600000,
+   "fs": 100000.0,
+   "dur": 6.0,
+   "ncodes": 5,
+   "lsb_uV": 336.02329525656006,
+   "rms_uV": 173.5562562964113,
+   "dc_mV": 12.996204046665738,
+   "nzero": 0
+  },
+  "fanON_50k_a": {
+   "n": 3000000,
+   "fs": 50000.0,
+   "dur": 60.0,
+   "ncodes": 4,
+   "lsb_uV": 336.02329525656006,
+   "rms_uV": 118.25042574666429,
+   "dc_mV": 11.760123089728918,
+   "nzero": 0
+  },
+  "fanON_50k_b": {
+   "n": 3000000,
+   "fs": 50000.0,
+   "dur": 60.0,
+   "ncodes": 4,
+   "lsb_uV": 336.02329525656006,
+   "rms_uV": 108.1475254372444,
+   "dc_mV": 11.778289517140372,
+   "nzero": 0
+  },
+  "fanOFF_50k": {
+   "n": 2991808,
+   "fs": 50000.0,
+   "dur": 59.83616,
+   "ncodes": 4,
+   "lsb_uV": 336.02329525656006,
+   "rms_uV": 158.37952208958893,
+   "dc_mV": 13.249587691281405,
+   "nzero": 0
+  }
+ },
+ "pc_ramp": {
+  "cepstrum_hz": 50.0114596619898,
+  "hps_hz": 150.14066065047297,
+  "sigma": 312.7591191361954
+ },
+ "pc_mains": {
+  "cepstrum_hz": 60.41234853316327,
+  "sigma": 6.716320597969947,
+  "hps_hz": 60.008090948100715
+ },
+ "pc_mti": {
+  "db": 6.853630858524216,
+  "sigma": 12.429813709190375,
+  "floor_db": 0.5513864502616614
+ },
+ "pc_ceps_person": {
+  "sigma": 3.8754108505779605,
+  "spacing_hz": 52.35095952181209,
+  "null_sigma": 5.409317455222367,
+  "passed": false
+ },
+ "injection": [
+  {
+   "dbc": -46,
+   "global_hz": 45.15214399857955,
+   "global_sigma": 5.385617241891069,
+   "sigma_at_truth": -1.1946493178075752
+  },
+  {
+   "dbc": -40,
+   "global_hz": 45.15214399857955,
+   "global_sigma": 4.979892042427691,
+   "sigma_at_truth": -1.744131676575453
+  },
+  {
+   "dbc": -34,
+   "global_hz": 45.15214399857955,
+   "global_sigma": 4.771629139855598,
+   "sigma_at_truth": -2.334903527848337
+  },
+  {
+   "dbc": -30,
+   "global_hz": 45.15214399857955,
+   "global_sigma": 4.664847709531099,
+   "sigma_at_truth": -0.6885332370632902
+  },
+  {
+   "dbc": -28,
+   "global_hz": 45.15214399857955,
+   "global_sigma": 4.50962446115447,
+   "sigma_at_truth": 0.678079799272468
+  },
+  {
+   "dbc": -26,
+   "global_hz": 12.163434709821429,
+   "global_sigma": 5.076644468273616,
+   "sigma_at_truth": 2.2887051447450304
+  },
+  {
+   "dbc": -24,
+   "global_hz": 12.163434709821429,
+   "global_sigma": 8.756595027054242,
+   "sigma_at_truth": 4.826792245539684
+  },
+  {
+   "dbc": -22,
+   "global_hz": 12.138661930371692,
+   "global_sigma": 12.583143038030641,
+   "sigma_at_truth": 6.904557186257498
+  },
+  {
+   "dbc": -20,
+   "global_hz": 12.163434709821429,
+   "global_sigma": 16.160021123360295,
+   "sigma_at_truth": 9.982126704095194
+  },
+  {
+   "dbc": -18,
+   "global_hz": 12.138661930371692,
+   "global_sigma": 16.776586486010885,
+   "sigma_at_truth": 12.14128540333916
+  }
+ ],
+ "injection_threshold_dbc": -22,
+ "ceps_test": {
+  "on_a_vs_off": {
+   "sigma": 4.4221909870989995,
+   "spacing_hz": 82.7789306640625
+  },
+  "on_b_vs_off": {
+   "sigma": 4.254931375403937,
+   "spacing_hz": 9.28361839223131
+  },
+  "pooled": {
+   "sigma": 4.258487154721646,
+   "spacing_hz": 82.7789306640625
+  },
+  "nbins": 707
+ },
+ "ceps_nulls": {
+  "onA_vs_onB": 4.293793745428195,
+  "off_splithalf": 5.313067835377485,
+  "onA_splithalf": 7.827162628842468
+ },
+ "ceps_repeatability_r": 0.5402966886190643,
+ "ceps_repeatability_r_null": 0.45441334104725223,
+ "candidate_consistency": {
+  "spacing_hz": 82.7789306640625,
+  "sigma_run_a": 4.4221909870989995,
+  "sigma_run_b": 2.214125910011205,
+  "sigma_null": 1.8862338371730456
+ },
+ "mains_rahmonics": [
+  {
+   "n": 1,
+   "sigma_on_off": -0.8991143456548149,
+   "sigma_null": 0.32440710404454104
+  },
+  {
+   "n": 2,
+   "sigma_on_off": 1.2545887317674203,
+   "sigma_null": -0.6753538256683969
+  },
+  {
+   "n": 3,
+   "sigma_on_off": 3.2382781390492767,
+   "sigma_null": 0.2630071915658208
+  },
+  {
+   "n": 4,
+   "sigma_on_off": -0.8644954976897853,
+   "sigma_null": 0.6855114530107743
+  },
+  {
+   "n": 5,
+   "sigma_on_off": 3.0251018368352924,
+   "sigma_null": -1.5158946880760074
+  },
+  {
+   "n": 6,
+   "sigma_on_off": -0.08605319813911703,
+   "sigma_null": -0.7006655394313253
+  },
+  {
+   "n": 7,
+   "sigma_on_off": -0.4400326216589345,
+   "sigma_null": 0.7586558790888689
+  }
+ ],
+ "ceps_restricted": {
+  "nbins": 107,
+  "pooled_sigma": 4.258487154721646,
+  "pooled_hz": 82.7789306640625,
+  "null_sigma": 2.7802408280870123
+ },
+ "hps_K3": {
+  "best_f0": 579.9313964029676,
+  "best_sigma": 4.273605863046074,
+  "best_is_mains": false,
+  "best_nonmains_f0": 579.9313964029676,
+  "best_nonmains_sigma": 4.273605863046074,
+  "null_sigma": 3.523879266888707,
+  "n_trials": 3000
+ },
+ "hps_K5": {
+  "best_f0": 579.9313964029676,
+  "best_sigma": 3.5710758341121553,
+  "best_is_mains": false,
+  "best_nonmains_f0": 579.9313964029676,
+  "best_nonmains_sigma": 3.5710758341121553,
+  "null_sigma": 5.8814502588860735,
+  "n_trials": 3000
+ },
+ "mains_db_over_median": {
+  "fanON_50k_a": [
+   21.745630231399403,
+   8.08722383015828,
+   16.248438556237375,
+   6.877513623372693,
+   10.11505240348103,
+   3.2176737852971655,
+   2.2690008900809318,
+   1.0387436250672977,
+   4.642163895297372
+  ],
+  "fanON_50k_b": [
+   21.350080352623138,
+   8.783281666391446,
+   15.99341235825051,
+   6.848615514697087,
+   10.199460336851445,
+   2.785319769674018,
+   1.978875206564652,
+   1.4502601516956304,
+   4.174653964467069
+  ],
+  "fanOFF_50k": [
+   23.73060817248252,
+   7.9905577198077395,
+   17.388003993840897,
+   6.542787523829702,
+   11.57384023453848,
+   2.5082640034206634,
+   1.6111640103090679,
+   1.6146644019714955,
+   3.366985758739503
+  ]
+ },
+ "mains_false_tag_pct": 6.666999999999999,
+ "cross_rate_check": {
+  "spacing_hz": 12.320526375258265,
+  "sigma50_run_a": 0.4335606346994133,
+  "sigma50_run_b": 0.45639641964449057,
+  "sigma50_null": -0.05052766928995351
+ },
+ "ceps_100k": {
+  "on0_vs_off": 9.062585742824249,
+  "on0_vs_off_hz": 12.320526375258265,
+  "on1_vs_off": 8.156602759343654,
+  "on1_vs_off_hz": 12.320526375258265,
+  "null_12v12": 3.5115753070190405,
+  "null_3v3": 7.529607553358015,
+  "null_12v3": 5.850664839140683
+ },
+ "band_bounds": [
+  {
+   "lo": 200,
+   "hi": 600,
+   "diff_db": -0.5179991371682817,
+   "sigma": -5.961969008991398,
+   "bound_db": 0.6917669432025211,
+   "below_noise_db": 7.627771384872368
+  },
+  {
+   "lo": 600,
+   "hi": 1500,
+   "diff_db": -0.30881968088175604,
+   "sigma": -4.77000130059381,
+   "bound_db": 0.438303788503828,
+   "below_noise_db": 9.739096004527113
+  },
+  {
+   "lo": 1500,
+   "hi": 3000,
+   "diff_db": -0.15306356749804717,
+   "sigma": -2.8568876014430025,
+   "bound_db": 0.26021763783720603,
+   "below_noise_db": 12.093717364017474
+  },
+  {
+   "lo": 3000,
+   "hi": 6000,
+   "diff_db": -0.08106499938500722,
+   "sigma": -3.1548044609929313,
+   "bound_db": 0.13245645669231249,
+   "below_noise_db": 15.09071522846108
+  },
+  {
+   "lo": 6000,
+   "hi": 10000,
+   "diff_db": -0.02090135208917321,
+   "sigma": -1.3227675437059387,
+   "bound_db": 0.05250380890575766,
+   "below_noise_db": 19.14965665517553
+  }
+ ],
+ "band_bound_sigma": [
+  -5.961969008991398,
+  -4.77000130059381,
+  -2.8568876014430025,
+  -3.1548044609929313,
+  -1.3227675437059387
+ ],
+ "band_shape_rel_15k": {
+  "fanON_50k_a": [
+   2.8168931542275004,
+   1.519557089509476,
+   1.0133194158436254,
+   0.4682018825802743,
+   0.09035669255121093
+  ],
+  "fanON_50k_b": [
+   2.7117515521596545,
+   1.4903759250996274,
+   0.9275244615424327,
+   0.476903163538239,
+   0.12072431823438023
+  ],
+  "fanOFF_50k": [
+   3.322433158223234,
+   1.7733506878155936,
+   1.1399698771437556,
+   0.5631658876846473,
+   0.09940513251268612
+  ]
+ },
+ "verdict": {
+  "best_sigma": 4.4221909870989995,
+  "null_sigma": 7.827162628842468,
+  "detected": false
+ },
+ "pc_pass": {
+  "b1_ramp_comb": true,
+  "b2_mains_comb": true,
+  "b3_person_mti": true,
+  "b4_person_cepstrum": false
+ }
+}

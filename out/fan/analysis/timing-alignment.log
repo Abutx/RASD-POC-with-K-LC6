@@ -1,0 +1,507 @@
+
+==============================================================================
+  0.  INTEGRITY / QUANTISATION
+==============================================================================
+  fan_A    (240, 2000)      rms   3596.6 uV  pk-pk  16.80 mV    50 codes  step  336.0 uV
+  off_A    (160, 2000)      rms   3606.1 uV  pk-pk  16.80 mV    51 codes  step  336.0 uV
+  off_A2   (160, 2000)      rms   3619.1 uV  pk-pk  17.14 mV    52 codes  step  336.0 uV
+  moving   (240, 2000)      rms   3597.7 uV  pk-pk  16.13 mV    49 codes  step  336.0 uV
+  fan_B    (200, 128, 100)  rms   3398.3 uV  pk-pk  20.16 mV    61 codes  step  336.0 uV
+  fan_cw0  (2500000,)       rms    157.6 uV     5 codes  step  336.0 uV  (25.0 s)
+  fan_cw1  (2500000,)       rms    153.5 uV     5 codes  step  336.0 uV  (25.0 s)
+  off_cw   (600000,)        rms    173.6 uV     5 codes  step  336.0 uV  (6.0 s)
+  -> LSB is 336 uV; the bare CW IF really does live on a handful of codes.
+
+  Config A range axis: 0.813 m/bin, 1025 bins, max 833 m (B = 180 MHz measured)
+
+==============================================================================
+  1.  WHAT DID TIMING ALIGNMENT ACTUALLY BUY?  (measured, not assumed)
+==============================================================================
+  fan_on  B=30 blocks | cross-block coherence gamma:  near 0.4-4 m 0.859   far >60 m (noise) 0.0245   (1/B = 0.0333)
+  fan_off B=20 blocks | cross-block coherence gamma:  near 0.4-4 m 0.836   far >60 m (noise) 0.0398   (1/B = 0.0500)
+  box_in  B=20 blocks | cross-block coherence gamma:  near 0.4-4 m 0.657   far >60 m (noise) 0.0373   (1/B = 0.0500)
+  moving  B=30 blocks | cross-block coherence gamma:  near 0.4-4 m 0.507   far >60 m (noise) 0.0243   (1/B = 0.0333)
+
+  gamma ~ 1 means the complex range profile repeats bit-for-bit across
+  INDEPENDENT triggered acquisitions -- the timing alignment is real and
+  slow-time phase is meaningful.  gamma ~ 1/B is what a random start phase
+  would give.  Coherent integration over B=30 blocks therefore buys
+  10log10(30) = 14.8 dB on static content versus 10log10(sqrt(30)) = 7.4 dB
+  for incoherent averaging: 7.4 dB of EXTRA gain -- but only on static content.
+
+
+==============================================================================
+  2.  POSITIVE CONTROL -- can this method find the known moving person?
+==============================================================================
+  moving vs fan-off (box_out), per range bin, 7 bins searched in 0.8-6 m
+   range m |  INCOHERENT MTI      |  COHERENT MTI (N=8)   | coh gain (dB)
+           |   d_dB   sigma   n_s |   d_dB   sigma   n_s  | mov    off
+     0.81  |   5.96   0.68    8.8 |   6.86   0.87    7.8  |  6.24   5.34
+     1.63  |   7.46   0.63   11.9 |   8.36   0.79   10.7  |  6.30   5.41
+     2.44  |   7.17   0.52   13.8 |   7.64   0.67   11.5  |  6.05   5.58
+     3.25  |   3.55   0.50    7.2 |   2.90   0.53    5.5  |  5.51   6.15
+     4.07  |   1.78   0.57    3.1 |   1.64   0.70    2.3  |  5.06   5.21
+     4.88  |   1.34   0.62    2.2 |   1.17   0.71    1.7  |  5.17   5.34
+     5.69  |   1.06   0.47    2.3 |   1.38   0.53    2.6  |  5.61   5.28
+
+  BEST incoherent-MTI bin: 2.44 m  +7.17 dB  13.8 sigma
+  BEST   coherent-MTI bin: 2.44 m  +7.64 dB  11.5 sigma
+  split-half null within moving          : |d| median 0.47 dB, rms 0.51 dB, max |n_sigma| 0.8  (should be ~0 dB and <5 sigma)
+  split-half null within fan_off box_out : |d| median 0.64 dB, rms 0.81 dB, max |n_sigma| 2.0  (should be ~0 dB and <5 sigma)
+  split-half null within fan_off box_in  : |d| median 0.80 dB, rms 1.55 dB, max |n_sigma| 4.0  (should be ~0 dB and <5 sigma)
+  split-half null within fan_on          : |d| median 0.75 dB, rms 0.78 dB, max |n_sigma| 1.8  (should be ~0 dB and <5 sigma)
+
+  CONTROL box_in vs box_out (both fan-off, both static, different
+  acquisitions): max |n_sigma| in window = 2.3 at 1.63 m, |d| rms 0.93 dB
+  -> this is the real session-to-session reproducibility floor.
+
+  pulse-pair at 2.44 m:  moving  v = +0.125 m/s (aliased, |v|<0.155), |R1|/R0 = 0.141
+                        fan-off  v = -0.137 m/s, |R1|/R0 = 0.300
+
+  POSITIVE CONTROL: PASS
+
+==============================================================================
+  3.  FAN ON vs FAN OFF -- Config A, coherent vs incoherent
+==============================================================================
+  fan_on vs box_out, 7 bins searched in 0.8-6 m
+   range m |  INCOHERENT MTI      |  COHERENT MTI (N=8)   | coh gain (dB)
+           |   d_dB   sigma   n_s |   d_dB   sigma   n_s  | fan    off
+     0.81  |  -0.84   0.53   -1.6 |  -1.01   0.64   -1.6  |  5.17   5.34
+     1.63  |  -1.18   0.58   -2.0 |  -1.35   0.72   -1.9  |  5.24   5.41
+     2.44  |  -0.60   0.48   -1.2 |  -0.77   0.55   -1.4  |  5.41   5.58
+     3.25  |  -0.04   0.43   -0.1 |   0.13   0.54    0.2  |  6.32   6.15
+     4.07  |  -0.62   0.49   -1.3 |  -0.22   0.56   -0.4  |  5.61   5.21
+     4.88  |   0.10   0.52    0.2 |   0.55   0.69    0.8  |  5.79   5.34
+     5.69  |   0.41   0.47    0.9 |   0.36   0.46    0.8  |  5.23   5.28
+
+  BEST incoherent-MTI bin: 5.69 m  +0.41 dB  0.9 sigma
+  BEST   coherent-MTI bin: 4.88 m  +0.55 dB  0.8 sigma
+
+  FULL-RANGE search (0 - 400 m apparent, 492 bins): max coherent n_sigma = 2.9 at 115.5 m apparent
+  (a v m/s scatterer is displaced by 160.9*v Hz = 2.681 m per m/s;
+   a 25 m/s blade tip would appear near +67 m)
+
+==============================================================================
+  4.  SENSITIVITY FLOOR -- how big a fan return would have been seen?
+==============================================================================
+  at 2.44 m (the bin where the person was found):
+    person       +7.64 dB rise -> target/clutter-floor =  +6.82 dB
+    fan          -0.77 dB rise +- 0.55 dB (1 sigma)
+    fan 5-sigma upper limit on the rise:  +1.98 dB -> target/floor <=  -2.38 dB
+    => the fan return is at least 9.2 dB weaker than the person's.
+
+  injection into the REAL fan-on data at 2.44 m, coherent within each 8-chirp block:
+    amp_uV   d_dB(coh)  n_sigma
+      10.0      +0.19      0.3
+      20.0      +4.20      8.2
+      40.0      +9.52     20.8
+      80.0     +15.26     35.1
+     160.0     +21.42     49.9
+     320.0     +27.40     64.0
+  -> 5-sigma detection threshold reached at ~20 uV IF amplitude (LSB = 336 uV; only FFT processing gain makes this possible).
+
+==============================================================================
+  5.  CONFIG B -- 128-chirp CONTIGUOUS CPI, PRF 1000 Hz, N=128 coherent
+==============================================================================
+  200 CPIs x 128 chirps x 100 samples | PRF 1000 Hz | CPI 128 ms
+  range 0.65 m/bin to 41.6 m | Doppler 0.049 m/s/bin, unambiguous +-3.06 m/s
+  MAINS: gcd(60,1000)=20, so 60 Hz harmonics alias onto a 20 Hz grid that covers the
+         WHOLE Doppler axis. A +-2 Hz tag flags 20% of it -- a mains tag in Config B
+         slow time carries almost no information.
+
+  reference-free CFAR on the 200-CPI average, 1353 cells (0.8-8 m, non-zero Doppler):
+     v m/s   range m   excess dB   n_sigma   mains?
+     -0.29     1.30       2.00       7.5   no
+     -0.34     1.30       1.74       5.8   no
+     +0.34     1.30       1.62       5.7   no
+     +0.29     1.30       1.43       4.5   no
+     -0.24     3.25       1.24       3.9   no
+     -2.18     7.81       1.18       3.8   no
+     -0.15     7.81       1.09       3.7   no
+     -0.19     3.90       0.95       3.2   no
+  expected largest |n_sigma| by chance with 1353 cells: ~3.8
+
+  coherent(N=128)/incoherent gain per range bin, averaged over 200 CPIs
+  (max possible 10log10(128) = 21.1 dB; pure noise gives ~6.9 dB)
+      0.65 m   7.60 dB
+      1.30 m   7.40 dB
+      1.95 m   7.36 dB
+      2.60 m   7.41 dB
+      3.25 m   7.37 dB
+      3.90 m   7.33 dB
+      4.55 m   7.30 dB
+      5.20 m   7.34 dB
+      5.86 m   7.32 dB
+
+  cross-CPI coherence of the raw profile (200 acquisitions): near 0.6-6 m median 0.762, far >20 m 0.0159 (1/200 = 0.0050)
+
+==============================================================================
+  6.  CW CORROBORATION (not the assigned method, but it has a real ref)
+==============================================================================
+  Welch 16384-pt, 6.10 Hz bins | fan cw0 L=304, cw1 L=304, fan-off L=72 segments
+  per-bin log-periodogram sigma: fan 0.249 dB, off 0.512 dB -> difference sigma 0.569 dB
+  (unequal averaging 25 s vs 6 s handled explicitly by the 1/L0 + 1/Lo form)
+  mains tag: |f mod 60| <= 3.05 Hz flags 10.2% of all bins (the false-tag rate)
+
+  fan-on(cw0) vs fan-off, 3677 non-mains bins in 20 Hz - 25 kHz:
+       Hz      m/s     d0_dB  n_sigma   d1_dB(repeat)  reproducible?
+      183.1    1.138    +2.20     3.9       +1.86          no
+     7324.2   45.508    +1.18     2.1       -0.21          no
+     4522.7   28.101    +1.16     2.0       -0.31          no
+      305.2    1.896    +1.15     2.0       +1.22          no
+     6579.6   40.881    +1.04     1.8       +0.22          no
+    15142.8   94.087    +0.96     1.7       +0.41          no
+     9155.3   56.885    +0.95     1.7       +0.82          no
+    20080.6  124.767    +0.91     1.6       +0.23          no
+     1727.3   10.732    +0.90     1.6       +0.57          no
+     9008.8   55.974    +0.88     1.5       +0.69          no
+  expected largest n_sigma by chance over 3677 bins: ~4.1
+
+  band power, fan-on vs fan-off (mains bins removed from every band):
+        20-   200 Hz (  0.12-  1.24 m/s): fan  -0.97 dB, repeat  -1.33 dB, sigma 0.112 ->   -8.7 sigma
+       200-  1000 Hz (  1.24-  6.21 m/s): fan  -0.99 dB, repeat  -1.22 dB, sigma 0.052 ->  -18.9 sigma
+      1000-  4000 Hz (  6.21- 24.85 m/s): fan  -0.85 dB, repeat  -1.10 dB, sigma 0.027 ->  -31.4 sigma
+      4000- 10000 Hz ( 24.85- 62.13 m/s): fan  -0.82 dB, repeat  -1.08 dB, sigma 0.019 ->  -42.9 sigma
+     10000- 25000 Hz ( 62.13-155.33 m/s): fan  -0.85 dB, repeat  -1.09 dB, sigma 0.012 ->  -70.4 sigma
+
+  fan-on cw0 vs fan-on cw1 (same condition, two independent 25 s chunks):
+    max |n_sigma| = 4.5, rms diff 0.44 dB -- the CW reproducibility floor.
+
+==============================================================================
+  7.  FIGURE
+==============================================================================
+  saved C:/dev/klc6/out/fan/analysis\timing-alignment.png
+
+{
+  "cross_block_gamma": {
+    "fan_on": 0.8587990865963671,
+    "fan_off": 0.8361112289967361,
+    "box_in": 0.65653562103861,
+    "moving": 0.507337034348682
+  },
+  "positive_control": {
+    "sigma": 11.45853638421699,
+    "range_m": 2.439717268880208,
+    "d_db": 7.641100709648349,
+    "passed": true,
+    "sigma_incoh": 13.838564979664461,
+    "range_incoh": 2.439717268880208,
+    "d_db_incoh": 7.1724020198389695
+  },
+  "fan_cfgA": {
+    "best_coh_sigma": 0.8068966275060645,
+    "best_coh_range": 4.879434537760416,
+    "best_coh_db": 0.5546606389527113,
+    "best_inc_sigma": 0.8696394743342206,
+    "best_inc_db": 0.4063759080213529,
+    "best_inc_range": 5.692673627387152,
+    "wide_max_sigma": 2.8596607269535212
+  },
+  "sensitivity": {
+    "person_over_floor_db": 6.820652795024173,
+    "fan_5sigma_limit_rise_db": 1.9822513804981612,
+    "fan_over_floor_limit_db": -2.3774970523064494,
+    "fan_weaker_than_person_db": 9.198149847330622
+  },
+  "injection_5sigma_uV": 20.0,
+  "cfgB": {
+    "cells": 1353,
+    "max_sigma": 7.538163441221471,
+    "chance_expectation": 3.797388478460108
+  },
+  "cfgB_coh_gain_db": {
+    "0.65": 7.598152221909082,
+    "1.30": 7.396337113462067,
+    "1.95": 7.360703636204903,
+    "2.60": 7.4116867443788195,
+    "3.25": 7.3743581901408675,
+    "3.90": 7.33296978110333,
+    "4.55": 7.3017446404301936,
+    "5.20": 7.34043859303123,
+    "5.86": 7.3232154438027095
+  },
+  "cfgB_cross_cpi_gamma": 0.7620259129081767,
+  "cw_bands": {
+    "20-200": {
+      "d_db": -0.9707053648167232,
+      "d_db_repeat": -1.3267816648105395,
+      "sigma": 0.11163195222200695,
+      "n_sigma": -8.695587110097676
+    },
+    "200-1000": {
+      "d_db": -0.9918096218051033,
+      "d_db_repeat": -1.2219218462274029,
+      "sigma": 0.05240035027694637,
+      "n_sigma": -18.927538013833693
+    },
+    "1000-4000": {
+      "d_db": -0.8505339539042325,
+      "d_db_repeat": -1.096130527644391,
+      "sigma": 0.02707472530619051,
+      "n_sigma": -31.414315169792758
+    },
+    "4000-10000": {
+      "d_db": -0.822638656384882,
+      "d_db_repeat": -1.0804423694330154,
+      "sigma": 0.01915555952107552,
+      "n_sigma": -42.94516458680261
+    },
+    "10000-25000": {
+      "d_db": -0.8523714260047086,
+      "d_db_repeat": -1.0932087994168,
+      "sigma": 0.012113667789671587,
+      "n_sigma": -70.36443798891874
+    }
+  },
+  "cw_max_sigma_nonmains": 3.866394617705968,
+  "cw_chance": 4.052123512752609,
+  "cw_within_condition_max_sigma": 4.508333527798973
+}
+
+==============================================================================
+  8.  IS THE CONFIG B 7.5-SIGMA FEATURE A FAN OR IS IT MAINS?
+==============================================================================
+  Doppler cut at 1.30 m (200-CPI mean, MTI'd, Hann in slow time).  Doppler bin = 7.81 Hz
+      f_d Hz   v m/s   dB over cut median
+     -125.00  -0.777       0.29
+     -117.19  -0.728       0.09
+     -109.38  -0.680       0.13
+     -101.56  -0.631       0.55
+      -93.75  -0.582      -0.34
+      -85.94  -0.534      -0.42
+      -78.12  -0.485      -0.36
+      -70.31  -0.437      -0.52
+      -62.50  -0.388      -0.42 <== 60 Hz MAINS
+      -54.69  -0.340       1.74 <== 60 Hz MAINS
+      -46.88  -0.291       2.00
+      -39.06  -0.243       0.06
+      -31.25  -0.194      -0.29
+      -23.44  -0.146      -0.17
+      -15.62  -0.097       0.44
+       -7.81  -0.049       2.02
+       +0.00  +0.000      -2.26
+       +7.81  +0.049       0.13
+      +15.62  +0.097      -0.14
+      +23.44  +0.146      -0.23
+      +31.25  +0.194      -0.13
+      +39.06  +0.243      -0.11
+      +46.88  +0.291       1.43
+      +54.69  +0.340       1.62 <== 60 Hz MAINS
+      +62.50  +0.388       0.17 <== 60 Hz MAINS
+      +70.31  +0.437       0.18
+      +78.12  +0.485      -0.42
+      +85.94  +0.534      -0.55
+      +93.75  +0.582      -0.06
+     +101.56  +0.631       0.71
+     +109.38  +0.680      -0.02
+     +117.19  +0.728      -0.63
+     +125.00  +0.777      -0.88
+
+  strongest non-DC Doppler line in the cut: -46.88 Hz (13.1 Hz from 60 Hz;
+  Hann leakage from a 60 Hz line spans +-2 bins = +-15.6 Hz, so bins at
+  46.9 / 54.7 / 62.5 / 70.3 Hz ALL belong to the 60 Hz line)
+  +/- Doppler symmetry over 20-130 Hz: mean |P(+f) - P(-f)| = 0.36 dB
+
+  A target moving at a real velocity gives a ONE-SIDED Doppler line (approaching
+  or receding, not both).  A modulation of a stationary return -- which is what
+  60 Hz mains pickup on the feedthrough is -- gives a SYMMETRIC pair.  The
+  feature is symmetric, sits within one Hann mainlobe of exactly 60 Hz, and
+  lives in the feedthrough range bin.  It is mains, not blades.
+
+  8b. range dependence and reproducibility of the +-50 Hz feature
+    range   clutter dB   +-50 Hz band excess dB
+     0.65 m      -54.1      +2.04
+     1.30 m      -51.7      +0.92
+     1.95 m      -56.0      +0.13
+     2.60 m      -60.8      +0.06
+     3.25 m      -60.9      +0.10
+     3.90 m      -60.5      -0.09
+     4.55 m      -61.4      -0.29
+     5.20 m      -61.6      -0.22
+     5.86 m      -61.6      -0.06
+     6.51 m      -61.8      +0.03
+     7.16 m      -62.0      +0.12
+    CPIs 1-100  excess at -55/-47/+47/+55 Hz: +1.59 +1.99 +1.75 +2.15
+    CPIs 101-200                            : +1.88 +2.00 +1.09 +1.04
+    -> the excess is confined to the 0.65 and 1.30 m bins, which are the
+       TX-feedthrough / near-clutter bins (7-10 dB above the far bins), and has
+       fallen to +0.06 dB by 2.60 m -- where the fan actually is.  It is an
+       amplitude modulation of the feedthrough, not a target return.
+
+  8c. high-resolution CW (1.53 Hz bins) 25-90 Hz -- a ~50 Hz blade-pass
+      line would be the only alternative explanation.  CW HAS a fan-off
+      reference, Config B does not.
+      strongest fan-on lines in 25-90 Hz (over local median):
+          59.51 Hz   +14.1 dB over median  | fan-on minus fan-off -1.30 dB (sigma 1.17)
+          61.04 Hz   +12.1 dB over median  | fan-on minus fan-off -1.36 dB (sigma 1.17)
+          25.94 Hz    +4.1 dB over median  | fan-on minus fan-off +0.39 dB (sigma 1.17)
+      max fan-on-minus-fan-off in 25-90 Hz: +1.43 dB = 1.2 sigma (repeat chunk -0.10 dB)
+      -> the only line in that band is 60 Hz mains, and it is if anything
+         WEAKER with the fan on. No blade-pass line exists in CW.
+
+  CW check -- does switching the fan on raise mains pickup?
+       Hz    fan-on dB   fan-off dB   delta dB
+        60      -105.3       -103.9      -1.35
+       120      -114.1       -114.7      +0.54
+       180      -111.5       -113.8      +2.22
+       240      -117.1       -115.3      -1.76
+       300      -114.8       -116.8      +2.05
+       360      -119.6       -116.5      -3.12
+       420      -118.6       -118.7      +0.02
+       480      -120.6       -119.5      -1.11
+
+==============================================================================
+  9.  THE BROADBAND SESSION OFFSET THAT INVALIDATES THE NAIVE CW SIGMA
+==============================================================================
+  fan-on is uniformly ~0.9 dB BELOW fan-off in EVERY band from 20 Hz to
+  25 kHz, including 10-25 kHz (62-155 m/s) where no physical fan signal
+  can exist.  A frequency-independent offset across three decades is a
+  receiver/session gain difference (different day, different noise floor),
+  not a target.  Consequences:
+    median fan-on minus fan-off over 20 Hz-25 kHz : -0.83 dB
+    same for the second fan-on chunk               : -1.08 dB
+    naive per-band sigma at 10-25 kHz              :  0.012 dB
+    ACTUAL session-to-session offset               :  0.83 dB
+  -> the honest CW floor is the ~0.9 dB session offset, roughly 70x the
+     naive statistical sigma.  Any CW on/off band difference below ~1 dB
+     is uninformative.  Corrected for the offset, every band is within
+     +-0.15 dB of zero:
+          20-   200 Hz : -0.14 dB after removing the -0.83 dB offset
+         200-  1000 Hz : -0.16 dB after removing the -0.83 dB offset
+        1000-  4000 Hz : -0.02 dB after removing the -0.83 dB offset
+        4000- 10000 Hz : +0.01 dB after removing the -0.83 dB offset
+       10000- 25000 Hz : -0.02 dB after removing the -0.83 dB offset
+
+==============================================================================
+  VERDICT
+==============================================================================
+  positive control  : PASS -- moving person found at 2.44 m,
+                      +7.64 dB, 11.5 sigma coherent (13.8 sigma incoherent)
+  fan, Config A     : NULL -- best 0.8 sigma in 0.8-6 m, 2.9 sigma over the
+                      full 0-400 m apparent-range search (492 bins; ~3.5 expected
+                      by chance).  Session-to-session control (box_in vs box_out,
+                      both fan-off) itself reaches 2.3 sigma, so <2.3 sigma is
+                      indistinguishable from drift.
+  fan, Config B     : NULL -- the single >5 sigma cell is a 60 Hz mains line,
+                      symmetric in +-Doppler, in the feedthrough range bin.
+  fan, CW           : NULL -- no reproducible line; the apparent 8-70 sigma band
+                      differences are a uniform 0.83 dB broadband session offset.
+  sensitivity       : the fan return is >= 9.2 dB weaker than the person's;
+                      injection says the detector reaches 5 sigma at ~20 uV.
+
+
+{
+  "cross_block_gamma": {
+    "fan_on": 0.8587990865963671,
+    "fan_off": 0.8361112289967361,
+    "box_in": 0.65653562103861,
+    "moving": 0.507337034348682
+  },
+  "positive_control": {
+    "sigma": 11.45853638421699,
+    "range_m": 2.439717268880208,
+    "d_db": 7.641100709648349,
+    "passed": true,
+    "sigma_incoh": 13.838564979664461,
+    "range_incoh": 2.439717268880208,
+    "d_db_incoh": 7.1724020198389695
+  },
+  "fan_cfgA": {
+    "best_coh_sigma": 0.8068966275060645,
+    "best_coh_range": 4.879434537760416,
+    "best_coh_db": 0.5546606389527113,
+    "best_inc_sigma": 0.8696394743342206,
+    "best_inc_db": 0.4063759080213529,
+    "best_inc_range": 5.692673627387152,
+    "wide_max_sigma": 2.8596607269535212
+  },
+  "sensitivity": {
+    "person_over_floor_db": 6.820652795024173,
+    "fan_5sigma_limit_rise_db": 1.9822513804981612,
+    "fan_over_floor_limit_db": -2.3774970523064494,
+    "fan_weaker_than_person_db": 9.198149847330622
+  },
+  "injection_5sigma_uV": 20.0,
+  "cfgB": {
+    "cells": 1353,
+    "max_sigma": 7.538163441221471,
+    "chance_expectation": 3.797388478460108
+  },
+  "cfgB_coh_gain_db": {
+    "0.65": 7.598152221909082,
+    "1.30": 7.396337113462067,
+    "1.95": 7.360703636204903,
+    "2.60": 7.4116867443788195,
+    "3.25": 7.3743581901408675,
+    "3.90": 7.33296978110333,
+    "4.55": 7.3017446404301936,
+    "5.20": 7.34043859303123,
+    "5.86": 7.3232154438027095
+  },
+  "cfgB_cross_cpi_gamma": 0.7620259129081767,
+  "cw_bands": {
+    "20-200": {
+      "d_db": -0.9707053648167232,
+      "d_db_repeat": -1.3267816648105395,
+      "sigma": 0.11163195222200695,
+      "n_sigma": -8.695587110097676
+    },
+    "200-1000": {
+      "d_db": -0.9918096218051033,
+      "d_db_repeat": -1.2219218462274029,
+      "sigma": 0.05240035027694637,
+      "n_sigma": -18.927538013833693
+    },
+    "1000-4000": {
+      "d_db": -0.8505339539042325,
+      "d_db_repeat": -1.096130527644391,
+      "sigma": 0.02707472530619051,
+      "n_sigma": -31.414315169792758
+    },
+    "4000-10000": {
+      "d_db": -0.822638656384882,
+      "d_db_repeat": -1.0804423694330154,
+      "sigma": 0.01915555952107552,
+      "n_sigma": -42.94516458680261
+    },
+    "10000-25000": {
+      "d_db": -0.8523714260047086,
+      "d_db_repeat": -1.0932087994168,
+      "sigma": 0.012113667789671587,
+      "n_sigma": -70.36443798891874
+    }
+  },
+  "cw_max_sigma_nonmains": 3.866394617705968,
+  "cw_chance": 4.052123512752609,
+  "cw_within_condition_max_sigma": 4.508333527798973,
+  "cfgB_top_feature": {
+    "range_m": 1.3011825434027775,
+    "f_doppler_hz": -46.875,
+    "offset_from_60hz": 13.125,
+    "pm_symmetry_db": 0.35891020524635003,
+    "verdict": "60 Hz mains, not a fan"
+  },
+  "cfgB_feature_range_dependence": {
+    "0.65": 2.036517438317148,
+    "1.30": 0.9225643648141926,
+    "1.95": 0.13195709319947468,
+    "2.60": 0.061457737722989236,
+    "3.25": 0.10085396063054475,
+    "3.90": -0.09025820922006744,
+    "4.55": -0.28671952374311616
+  },
+  "cw_hires_25_90Hz": {
+    "max_d_db": 1.4308259566879684,
+    "max_sigma": 1.226489056514807,
+    "only_line_hz": 59.50927734374999
+  },
+  "mains_60hz_fan_on_minus_off_db": -1.3470215912754782,
+  "cw_session_offset_db": -0.8340028086366402,
+  "cw_bands_offset_corrected": {
+    "20-200": -0.13670255618008298,
+    "200-1000": -0.15780681316846312,
+    "1000-4000": -0.01653114526759225,
+    "4000-10000": 0.011364152251758242,
+    "10000-25000": -0.018368617368068385
+  }
+}
