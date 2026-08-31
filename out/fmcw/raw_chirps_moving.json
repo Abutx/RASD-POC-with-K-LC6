@@ -1,0 +1,8 @@
+{
+  "label": "human_moving",
+  "session": "20260829_bench",
+  "target": "person walking 1-2.5 m, POSITIVE CONTROL 12 sigma",
+  "distance_m": 1.5,
+  "source": "bench",
+  "if_gain_db": 0
+}

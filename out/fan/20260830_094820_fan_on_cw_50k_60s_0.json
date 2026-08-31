@@ -1,0 +1,9 @@
+{
+  "label": "fan_on",
+  "session": "20260830_bench",
+  "target": "household fan, plastic blades",
+  "distance_m": 2.5,
+  "aspect": "axis-on",
+  "source": "bench",
+  "if_gain_db": 0
+}

@@ -1,0 +1,8 @@
+{
+  "label": "bench_check",
+  "source": "bench",
+  "session": "20260831_bench_mac",
+  "target": "first Mac smoke test; operator at desk, condition uncontrolled",
+  "if_gain_db": 0,
+  "notes": "chain-aliveness capture, not controlled training data"
+}

@@ -1,0 +1,7 @@
+{
+  "label": "empty",
+  "session": "20260829_bench",
+  "target": "empty room, Config A fan-off reference",
+  "source": "bench",
+  "if_gain_db": 0
+}

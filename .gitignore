@@ -17,3 +17,6 @@ desktop.ini
 # in docs/FINDINGS.md and docs/FAN_DETECTION.md.
 out/**/_*.py
 out/**/explore*.py
+
+# rebuildable index (python -m dataset.manifest build out/)
+dataset/manifest.sqlite

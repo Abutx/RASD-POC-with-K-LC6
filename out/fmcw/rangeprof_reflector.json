@@ -1,0 +1,6 @@
+{
+  "label": "derived",
+  "session": "20260829_bench",
+  "target": "processed output, not raw training data",
+  "source": "bench"
+}

@@ -1,0 +1,8 @@
+{
+  "label": "reflector_static",
+  "session": "20260829_bench",
+  "target": "foiled corner reflector ~2.7 m2",
+  "distance_m": 4.0,
+  "source": "bench",
+  "if_gain_db": 0
+}

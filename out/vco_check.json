@@ -1,0 +1,6 @@
+{
+  "label": "derived",
+  "source": "bench",
+  "session": "20260831_bench_mac",
+  "target": "VCO characterisation sweep (W1 vs pin5 vs IF), instrument data"
+}
