@@ -26,6 +26,7 @@ range res     = c / 2B  ->  0.83 m at the MEASURED 180 MHz sweep
 
 | script | what it does |
 |---|---|
+| `doctor.py` | **Environment + hardware check. Run first on any new machine.** |
 | `smoke_test.py` | Proves the chain streams. Level, dominant Doppler, spectrogram. |
 | `baseline.py` | Long empty-room capture + interference inventory in Hz and m/s. |
 | `analyze.py` | Load an `.npz` → inventory, spectrogram, cadence diagram. `--repair` trims legacy leading zeros. |
@@ -38,12 +39,49 @@ range res     = c / 2B  ->  0.83 m at the MEASURED 180 MHz sweep
 | `fan_matched_test.py` | Duration-matched fan-on vs empty test with a measured same-condition floor. |
 | `fan_ab_test.py` | **Same-session fan ON/OFF/ON A/B.** Run this first — removes the session confound. |
 
+## Setup on a new machine
+
+**Two things are NOT pip-installable and must come first:**
+
+1. **Digilent WaveForms** — https://digilent.com/reference/software/waveforms/waveforms-3/start
+   This ships the SDK and `dwf.dll` (`libdwf` on Linux/macOS). `dwfpy` is only a
+   wrapper; without WaveForms installed it fails at import. **Close the WaveForms
+   application before running anything** — it holds the device exclusively.
+2. **tkinter** — bundled with python.org builds. On Debian/Ubuntu:
+   `sudo apt install python3-tk`
+
+Then:
+
+```bash
+pip install -r requirements.txt
+python scripts/doctor.py          # <-- run this FIRST
+```
+
+`doctor.py` checks packages, the dwf runtime, device enumeration, device
+configuration 1 (the 16,384-sample buffer FMCW needs), and takes a real 0.5 s
+capture to confirm the K-LC6 is powered and wired to Channel 1. It prints the
+specific fix for whatever fails instead of a stack trace.
+
+### Wiring
+
+| | |
+|---|---|
+| Power | external 5 V into K-LC6 **X1 pin 2** |
+| CH1 (orange 1+) | **X1 pin 3** — IF I |
+| W1 (yellow) | **X1 pin 5** — VCO in (FMCW only) |
+| Ground | X1 pin 4 + AD2 ⏚ + 1− + 2− + supply return, star-tied |
+
+Expected healthy CH1 reading with the module powered: **~150–180 µV rms**, mean
+around +13 mV, 4–7 distinct ADC codes. A flat channel (<30 µV) means no power or
+a wiring fault — `doctor.py` says so explicitly.
+
 ## Quick start
 
 ```bash
+python scripts/doctor.py                # environment + hardware check
 python scripts/smoke_test.py            # is the chain alive?
 python scripts/live.py --threshold 5    # CW motion detector
-python scripts/ppi.py --bw 180e6        # FMCW radar scope
+python scripts/ppi.py --rmax 10         # FMCW radar scope
 ```
 
 ## Things that will bite you

@@ -1,0 +1,14 @@
+# Python packages. Versions are the ones this was developed and measured on;
+# anything newer should work.
+dwfpy>=1.0          # wraps Digilent's dwf C API -- NEEDS the WaveForms SDK, see README
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.7     # colormaps for the scopes; Agg for headless figures
+pillow>=10.0        # ImageTk for the fast Tk displays (live.py, ppi.py)
+
+# NOT pip-installable, install these first:
+#   1. Digilent WaveForms (includes the SDK and dwf.dll / libdwf)
+#      https://digilent.com/reference/software/waveforms/waveforms-3/start
+#      dwfpy loads dwf.dll at import; without WaveForms it fails immediately.
+#   2. tkinter -- bundled with python.org Windows/macOS builds.
+#      On Debian/Ubuntu: sudo apt install python3-tk

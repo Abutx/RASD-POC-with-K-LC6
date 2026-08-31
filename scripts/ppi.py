@@ -227,6 +227,7 @@ def main() -> int:
 
     print("  LIVE -- walk toward and away. Close the window to stop.\n", flush=True)
     frames, t_start, t_fps, fps_n = 0, time.time(), time.time(), 0
+    ndet, t_last_print = 0, 0.0
     try:
         while running["go"]:
             prof, vprof = cpi()
@@ -266,10 +267,23 @@ def main() -> int:
                 j = hits[int(np.argmax(excess[hits]))]
                 msg = (f"TARGET  {r_k[j]:5.2f} m   {excess[j]:+5.1f} dB   "
                        f"{vprof[j]:+5.2f} m/s   ({len(hits)} bins)")
+                # Also print it. The status label is invisible to anything
+                # reading the log, so a session run in the background looked
+                # like it had zero detections when it may have had many.
+                ndet += 1
+                if now - t_last_print > 0.4:
+                    t_last_print = now
+                    print(f"    t={now-t_start:6.1f}s  TARGET {r_k[j]:5.2f} m  "
+                          f"{excess[j]:+5.1f} dB  {vprof[j]:+5.2f} m/s  "
+                          f"({len(hits)} bins)", flush=True)
             else:
                 msg = "no movers                                        "
             if now - t_fps >= 2.0:
-                msg += f"   |  {fps_n/(now-t_fps):.1f} CPI/s"
+                rate = fps_n / (now - t_fps)
+                msg += f"   |  {rate:.1f} CPI/s"
+                print(f"    [{rate:4.1f} CPI/s | {ndet} detections so far | "
+                      f"peak excess {excess.max():+5.1f} dB @ "
+                      f"{r_k[int(np.argmax(excess))]:.2f} m]", flush=True)
                 t_fps, fps_n = now, 0
             status.configure(text="  " + msg)
 
