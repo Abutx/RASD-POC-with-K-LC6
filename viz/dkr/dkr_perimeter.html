@@ -1,0 +1,509 @@
+<title>DKR Perimeter Radar</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --ink:#0E0F12; --panel:#17191F; --panel-2:#1E2129; --line:#2A2E38;
+    --text:#E8E4DC; --muted:#8C8A84; --accent:#BF5700; --accent-2:#E07A2E;
+    --car:#D9A441; --drone:#3C7FC0; --two:#4CAF7A; --miss:#C94F4F;
+    --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+    --body:"Barlow","Helvetica Neue",Arial,sans-serif;
+    --mono:"JetBrains Mono","SFMono-Regular",Consolas,monospace;
+  }
+  html,body{height:100%;margin:0}
+  body{background:var(--ink);color:var(--text);font:14px/1.45 var(--body);overflow:hidden}
+  #gl{position:fixed;inset:0;display:block}
+  #gl.drop{cursor:crosshair}
+  .rail{position:fixed;top:0;left:0;bottom:0;width:350px;background:linear-gradient(180deg,rgba(23,25,31,.97),rgba(23,25,31,.93));border-right:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto;backdrop-filter:blur(6px)}
+  .brand{padding:18px 20px 12px;border-bottom:1px solid var(--line)}
+  .brand h1{font:700 30px/1 var(--display);letter-spacing:.01em;margin:0;text-wrap:balance}
+  .brand h1 span{color:var(--accent)}
+  .brand p{margin:6px 0 0;color:var(--muted);font-size:12.5px}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+  .stat{background:var(--panel-2);padding:12px 16px}
+  .stat b{display:block;font:500 26px/1 var(--mono);font-variant-numeric:tabular-nums}
+  .stat small{display:block;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-top:5px}
+  .stat.car b{color:var(--car)} .stat.dr b{color:var(--drone)} .stat.live b{color:var(--two)} .stat.n b{color:var(--accent-2)}
+  section{padding:14px 20px;border-bottom:1px solid var(--line)}
+  section h2{font:600 13px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+  .row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;margin:7px 0}
+  .row output{font:500 13px var(--mono);font-variant-numeric:tabular-nums;min-width:64px;text-align:right}
+  input[type=range]{width:100%;accent-color:var(--accent);margin:2px 0 0}
+  select,input[type=number],button,.file{font:14px var(--body);color:var(--text);background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:6px 8px}
+  select{width:100%} input[type=number]{width:72px;text-align:right;font-family:var(--mono)}
+  button{cursor:pointer} button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button[aria-pressed=true].toggle{background:var(--accent);border-color:var(--accent);color:#fff}
+  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent-2);outline-offset:1px}
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+  .views{display:grid;grid-template-columns:repeat(3,1fr);gap:6px} .views button{padding:7px 4px;font-size:12.5px}
+  .seg{display:grid;grid-template-columns:repeat(var(--n,3),1fr);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-top:8px}
+  .seg button{border:0;border-radius:0;background:transparent;padding:7px 4px;font-size:12.5px;color:var(--muted)}
+  .seg button[aria-pressed=true]{background:var(--accent);color:#fff}
+  .chk{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;margin:6px 0}
+  .chk .sw{width:12px;height:12px;border-radius:2px} .chk output{font:500 12.5px var(--mono);color:var(--muted)}
+  .note{color:var(--muted);font-size:12px;margin:8px 0 0} .note em{color:var(--car);font-style:normal} .note b{font-family:var(--mono);font-weight:500;color:var(--text)}
+  .file{display:block;text-align:center} .file input{display:none}
+  .legend{position:fixed;right:16px;bottom:14px;background:rgba(23,25,31,.92);border:1px solid var(--line);border-radius:4px;padding:10px 14px;font-size:12px;display:grid;gap:6px}
+  .legend div{display:flex;align-items:center;gap:8px} .sw{width:14px;height:14px;border-radius:2px;display:inline-block}
+  .help{position:fixed;left:366px;bottom:14px;color:var(--muted);font-size:12px;background:rgba(14,15,18,.7);padding:6px 10px;border-radius:4px}
+  .help b{color:var(--text);font-family:var(--mono);font-weight:500}
+  .maps{position:fixed;right:16px;top:14px;font-size:12px;display:flex;gap:8px}
+  .maps a{color:var(--text);text-decoration:none;border:1px solid var(--line);background:rgba(23,25,31,.92);padding:6px 10px;border-radius:4px} .maps a:hover{border-color:var(--accent)}
+  .attrib{position:fixed;left:366px;top:14px;font-size:11px;color:var(--muted);background:rgba(14,15,18,.6);padding:4px 8px;border-radius:4px}
+  .hud{position:fixed;left:366px;top:44px;display:flex;gap:8px;font:500 12.5px var(--mono);color:var(--text)}
+  .hud span{background:rgba(23,25,31,.92);border:1px solid var(--line);border-radius:4px;padding:5px 9px}
+  .hud i{font-style:normal;color:var(--muted)}
+  #err{position:fixed;left:50%;top:48px;transform:translateX(-50%);z-index:9;max-width:90vw;background:#3a1010;color:#ffd9d9;border:1px solid #a33;border-radius:4px;padding:10px 14px;font:13px/1.4 var(--mono)}
+  @media (max-width:820px){.rail{width:100%;bottom:auto;max-height:55vh}.help,.maps,.attrib,.hud{display:none}.legend{bottom:8px;right:8px}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<canvas id="gl"></canvas>
+<div id="err" hidden></div>
+
+<aside class="rail">
+  <div class="brand">
+    <h1>DKR <span>Perimeter</span> Radar</h1>
+    <p>Darrell K Royal–Texas Memorial Stadium · nodes on the outer wall, facing out · live cars on the real streets, drones you drop, swarms that fly in</p>
+  </div>
+  <div class="stats">
+    <div class="stat car"><b id="sCar">–</b><small>zone · cars seen</small></div>
+    <div class="stat dr"><b id="sDr">–</b><small>zone · drones seen</small></div>
+    <div class="stat live"><b id="sLive">0 / 0</b><small>drones seen right now</small></div>
+    <div class="stat n"><b id="sWarn">–</b><small>mean warning distance</small></div>
+  </div>
+
+  <section>
+    <h2>Sensor</h2>
+    <select id="sensor">
+      <option value="tinyrad" selected>EV-TINYRAD24G · 75° × 15°</option>
+      <option value="klc6amp">K-LC6 + 30 dB amp · 80° × 12°</option>
+      <option value="klc6">K-LC6 bare (today) · 80° × 12°</option>
+      <option value="custom">Custom board (product target)</option>
+      <option value="array">Receive array, FCC-capped EIRP</option>
+      <option value="prod">Production node · 16-ch fan + overhead cone (BOM)</option>
+      <option value="magos">Magos · AR-300 air + SR-500 ground</option>
+    </select>
+    <div id="prodctl" hidden>
+      <div class="row"><label>Fan tilt (BOM: +10° uptilt)</label><input type="number" id="pTilt" value="10" min="-60" max="60" step="1"></div>
+      <div class="row"><label>Fan elevation FOV (BOM 15°; DBF 30/45/60)</label><input type="number" id="pEl" value="15" min="15" max="90" step="15"></div>
+      <p class="note">Elevation FOV above 15° means the 8-element columns are split into digitised sub-columns (30° = 32 ch, 45° = 48 ch, 60° = 64 ch) and beamformed in elevation: every sector is a full-gain beam, all at once, 20 Hz, no servo. Range is preserved only if the TX PA is raised to keep EIRP at the §15.245 cap (the BOM sits 6.7 dB under it).</p>
+      <p class="note">Two beams per node. <b>Fan</b>: 90° × 15°, Mini 3 body ~600 m (BOM 500 m at 0.01 m²), cars to the zone edge. <b>Overhead cone</b>: 120° × 120° straight up, ~130 m. The BOM fixes the fan at +10°; set "Elevation sectors" above 1 to nod it instead. BOM assumes 4 nodes for 360°. <b>Price at 110% margin: $4,470/node</b> (prototype cost $2,129) → <b>$1,440/node</b> at volume ($686). 8 nodes: $35.8k proto / $11.5k volume.</p>
+    </div>
+    <div id="magosctl" hidden>
+      <div class="row"><label>AR-300 aim (elevation)</label><input type="number" id="mAim" value="30" min="-30" max="90" step="1"></div>
+      <div class="row"><label>SR-500 aim (elevation)</label><input type="number" id="mSr" value="-15" min="-60" max="30" step="1"></div>
+      <p class="note">Published: <b>AR-300</b> X-band, 120° × 120°, &gt;300 m on a Mavic (~270 m for a Mini 3), 7 Hz, air only. <b>SR-500</b> 5.8 GHz, 120° × 30°, vehicle 600 m, person 400 m, drone ~100 m. Magos recommends four AR-300 for 360°. <b>No list price.</b> Estimate: SR-500 ~$6k new (a used SR-500F resells at $4,000), AR-300 ~$25k (drone-radar tier; Echodyne panels are ~$40k) → <b>~$31k per AR-300 + SR-500 pair</b>, range $23–43k. 8 pairs: ~$248k, hardware only.</p>
+    </div>
+    <div id="array" hidden>
+      <div class="row"><label>Rule</label><select id="aRule" style="width:auto"><option value="15249">15.249 general · 24.0–24.25</option><option value="15245" selected>15.245 field sensor · 24.075–24.175</option><option value="lic">Part 90 licence · set EIRP</option></select></div>
+      <div class="row"><label>EIRP used, dBm</label><input type="number" id="aEirp" value="32.7" step="0.1" disabled></div>
+      <div class="row"><label>Receive elements</label><input type="number" id="aN" value="16" min="1" max="256"></div>
+      <div class="row"><label>Element gain, dBi</label><input type="number" id="aG" value="12.6" step="0.1"></div>
+      <div class="row"><label>Noise figure, dB</label><input type="number" id="aNF" value="10" step="0.5"></div>
+      <div class="row"><label>Coherent dwell, ms</label><input type="number" id="aT" value="50" min="1" max="2000"></div>
+      <div class="row"><label>Azimuth FOV (element)</label><input type="number" id="aAz" value="75" min="5" max="180"></div>
+      <div class="row"><label>Elevation FOV (element)</label><input type="number" id="aEl" value="15" min="5" max="180"></div>
+    </div>
+    <div class="seg" style="--n:2" role="group" aria-label="range convention">
+      <button data-mode="cons" aria-pressed="false">Conservative</button>
+      <button data-mode="text" aria-pressed="true">Textbook</button>
+    </div>
+    <div id="custom" hidden>
+      <div class="row"><label>Azimuth beam</label><input type="number" id="cAz" value="90" min="5" max="180"></div>
+      <div class="row"><label>Elevation beam</label><input type="number" id="cEl" value="30" min="5" max="180"></div>
+      <div class="row"><label>Drone range, m</label><input type="number" id="cR" value="500" min="5" max="3000"></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="lCar" checked><span><span class="sw" style="background:var(--car)"></span> Car · 10 m² · street level</span><output id="rCar"></output></label>
+    <label class="chk"><input type="checkbox" id="lDr" checked><span><span class="sw" style="background:var(--drone)"></span> Drone · Mini 3 body</span><output id="rDr"></output></label>
+    <label class="chk"><input type="checkbox" id="lWedge"><span>3-D drone wedges</span><output></output></label>
+    <label class="chk"><input type="checkbox" id="lOcc" checked><span>Buildings block line of sight</span><output id="oOcc"></output></label>
+    <p class="note" id="sensorNote"></p>
+  </section>
+
+  <section>
+    <h2>Nodes</h2>
+    <div class="row"><label>Count</label><output id="oN">12</output></div>
+    <input type="range" id="nN" min="1" max="40" value="12">
+    <div class="row"><label>Mount height (roof rim ≈ 45 m, press box 63 m)</label><output id="oM">45 m</output></div>
+    <input type="range" id="nM" min="3" max="65" value="45">
+    <div class="seg" style="--n:3" role="group" aria-label="aim">
+      <button data-aim="drone" aria-pressed="false">Aim: drones</button>
+      <button data-aim="split" aria-pressed="true">Split</button>
+      <button data-aim="street" aria-pressed="false">Street</button>
+    </div>
+    <div class="row"><label>Elevation sectors per node (nodding mount)</label><output id="oK">3</output></div>
+    <input type="range" id="nK" min="1" max="4" value="3">
+    <div class="row"><label>Tilt offset</label><output id="oT">0°</output></div>
+    <input type="range" id="nT" min="-30" max="30" value="0">
+    <p class="note" id="secNote"></p>
+    <div class="row"><label>Perimeter zone depth</label><output id="oZ">150 m</output></div>
+    <input type="range" id="nZ" min="30" max="400" step="10" value="150">
+    <p class="note" id="aimNote"></p>
+  </section>
+
+  <section>
+    <h2>Drones</h2>
+    <div class="row"><label>Altitude for dropped drones &amp; slice</label><output id="oH">25 m</output></div>
+    <input type="range" id="nH" min="2" max="150" value="25">
+    <div class="btns">
+      <button id="bDrop" class="toggle" aria-pressed="false">Drop drone: click map</button>
+      <button id="bClear">Clear all drones</button>
+    </div>
+    <div class="row" style="margin-top:12px"><label>Swarm size</label><output id="oSw">12</output></div>
+    <input type="range" id="nSw" min="1" max="40" value="12">
+    <div class="row"><label>Swarm altitude band</label><output id="oAlt">15–60 m</output></div>
+    <input type="range" id="nAltLo" min="2" max="150" value="15"><input type="range" id="nAltHi" min="2" max="150" value="60">
+    <div class="row"><label>Swarm speed</label><output id="oSp">12 m/s</output></div>
+    <input type="range" id="nSp" min="2" max="30" value="12">
+    <div class="btns"><button id="bSwarm" class="primary">Launch swarm</button><button id="bSwarmAll">Launch from all sides</button></div>
+    <p class="note">A swarm spawns outside the zone and flies at the stadium. Each drone keeps its own altitude. <b>Warning distance</b> = how far from the wall it was when a node first saw it; drones that reach the wall unseen count as zero.</p>
+  </section>
+
+  <section>
+    <h2>Traffic</h2>
+    <div class="row"><label>Cars on the streets</label><output id="oCars">40</output></div>
+    <input type="range" id="nCars" min="0" max="120" value="40">
+    <p class="note">Cars run the real road network continuously — I-35 at 25 m/s, arterials at 12, campus streets at 8. Lit when a node sees them.</p>
+  </section>
+
+  <section>
+    <h2>Ground layer</h2>
+    <label class="file"><input type="file" id="img" accept="image/*">Overlay your own satellite screenshot…</label>
+    <div class="row"><label>Image width on ground</label><output id="oS">600 m</output></div>
+    <input type="range" id="nS" min="200" max="1500" step="10" value="600">
+    <div class="row"><label>Rotate</label><output id="oR">0°</output></div>
+    <input type="range" id="nR" min="-180" max="180" value="0">
+    <div class="row"><label>Opacity</label><output id="oO">0.7</output></div>
+    <input type="range" id="nO" min="0" max="1" step="0.05" value="0.7">
+    <p class="note">Streets, buildings, fences and the stadium footprint are surveyed geometry from OpenStreetMap (63-vertex outline, relation 1639372).</p>
+  </section>
+
+  <section>
+    <h2>View</h2>
+    <div class="views">
+      <button data-view="over">Overhead</button>
+      <button data-view="sw">SW · San Jacinto</button>
+      <button data-view="ne">NE · Red River</button>
+      <button data-view="street">Street level</button>
+      <button data-view="drone">Drone's eye</button>
+      <button data-view="s">South · MLK</button>
+    </div>
+  </section>
+</aside>
+
+<div class="attrib">Map data © OpenStreetMap contributors (ODbL)</div>
+<div class="hud"><span><i>cars seen</i> <b id="hCars">0 / 0</b></span><span><i>drones seen</i> <b id="hDr">0 / 0</b></span><span><i>unseen at the wall</i> <b id="hLeak">0</b></span><span><i>nodes for 90% drone zone</i> <b id="hNeed">…</b></span></div>
+<div class="maps"><a href="https://www.google.com/maps/@30.2836,-97.7325,400m/data=!3m1!1e3" target="_blank" rel="noopener">Google Maps satellite ↗</a><a href="https://www.openstreetmap.org/relation/1639372" target="_blank" rel="noopener">OSM footprint ↗</a></div>
+<div class="legend">
+  <div><span class="sw" style="background:var(--car)"></span> car · seen by a node</div>
+  <div><span class="sw" style="background:#4A4640"></span> car · not seen</div>
+  <div><span class="sw" style="background:var(--drone)"></span> drone · seen (stem shows altitude)</div>
+  <div><span class="sw" style="background:var(--miss)"></span> drone · not seen</div>
+  <div><span class="sw" style="background:var(--two)"></span> slice: drone seen by 2+ nodes</div>
+  <div><span class="sw" style="background:var(--accent)"></span> radar node, facing out</div>
+</div>
+<div class="help">drag <b>orbit</b> · wheel <b>zoom</b> · <b>W A S D</b> move · <b>Q E</b> up/down · <b>Shift</b> faster</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+const MAP=/*MAPDATA*/null;
+function showErr(msg){ const e=document.getElementById("err"); e.hidden=false; e.textContent=msg; }
+window.addEventListener("error",ev=>showErr("Page error: "+(ev.message||ev.error)+(ev.lineno?" (line "+ev.lineno+")":"")));
+if(typeof THREE==="undefined"){ showErr("Three.js failed to load from cdnjs — the 3-D view cannot start."); return; }
+if(!MAP){ showErr("Map data missing."); return; }
+
+// ------------------------------------------------------------- sensors
+const CAR_SCALE=Math.pow(10/0.02,0.25);                       // 4.73x: car 10 m^2 vs Mini 3 body 0.02 m^2
+const SENSORS={
+  tinyrad:{name:"EV-TINYRAD24G",az:75,el:15,drone:{cons:38,text:113},note:"UG-1709: 75° × 15° beam. Drone body 38 m (RFbeam-style derating) / 113 m (textbook, supported by ADI's own 1 m² at 100 m)."},
+  klc6amp:{name:"K-LC6 + 30 dB amp",az:80,el:12,drone:{cons:18,text:18},note:"Long-axis vertical: 80° azimuth, 12° elevation sheet. Drone body ~18 m."},
+  klc6:{name:"K-LC6 bare + AD2",az:80,el:12,drone:{cons:4,text:4},note:"Today's chain. The AD2's 336 µV LSB costs 25.5 dB: drone body ~4 m."},
+  custom:{name:"Custom board",az:90,el:30,drone:{cons:500,text:500},note:"Product target. Set beam and drone range; car range scales from it by 4.7×."},
+  array:{name:"Receive array, FCC-capped",az:75,el:15,drone:{cons:0,text:0},note:""},
+  // Multi-beam products: each 'tier' is a beam per node with its own ranges. Mini 3 body
+  // ranges scaled from the vendor figure by (0.02 / sigma_vendor)^0.25.
+  prod:{name:"Production node (BOM)",az:90,el:15,drone:{cons:600,text:600},
+    tiers:[{kind:"fan",az:90,el:15,Rd:600,Rc:2800},{kind:"up",az:120,el:120,Rd:130,Rc:0}],
+    note:"Two-tier 24 GHz node, §15.245 at the +32.7 dBm cap: 16-channel fan beam (90° × 15°) for range at low elevation, 4-channel 120° × 120° cone for the overhead. Range figures are the BOM's, which the radar equation reproduces at ~13 dBi/subarray and 100–500 ms CPI. Sell price at 110% margin: $4,470 (proto) / $1,440 (volume) per node."},
+  magos:{name:"Magos AR-300 + SR-500",az:120,el:120,drone:{cons:271,text:271},
+    tiers:[{kind:"air",az:120,el:120,Rd:271,Rc:0},{kind:"ground",az:120,el:30,Rd:100,Rc:600}],
+    note:"Incumbent pair as Magos deploys it: AR-300 (X-band, 120° × 120°, >300 m Mavic-class, air only) plus SR-500 (5.8 GHz, 120° × 30°, 600 m vehicle, ~100 m drone). Published specs; prices are not — est. ~$31k per pair (range $23–43k) vs our $4,470 proto / $1,440 volume per node at 110% margin."}
+};
+// FCC field-strength limits at 3 m -> EIRP. E = sqrt(30 P)/d  =>  P = (E d)^2 / 30.
+const FCC={"15249":{e:0.25,band:"24.0–24.25 GHz (250 MHz)"},"15245":{e:2.5,band:"24.075–24.175 GHz (100 MHz)"}};
+const fccEirpDbm=(e)=>10*Math.log10((e*3)**2/30*1e3);
+const LAMBDA=299792458/24.125e9;
+// Radar equation in the EIRP-limited regime: R^4 = EIRP*Gr*lambda^2*sigma / ((4pi)^3 * N0*B * SNR * L)
+function arrayRange(sigma){
+  const rule=aRule.value; const eirp=rule==="lic"?+aEirp.value:fccEirpDbm(FCC[rule].e);
+  const Gr=+aG.value+10*Math.log10(Math.max(1,+aN.value));                 // full receive aperture, all beams formed at once
+  const noise=-174+(+aNF.value)+10*Math.log10(1000/Math.max(1,+aT.value)); // dBm in a 1/T bandwidth
+  const num=eirp+Gr+20*Math.log10(LAMBDA)+10*Math.log10(sigma)-30*Math.log10(4*Math.PI)-noise-6-14; // 6 dB impl., 14 dB (5 sigma)
+  return {R:Math.pow(10,num/40),eirp,Gr};
+}
+let sensorKey="tinyrad", mode="text", aim="split";
+function sensor(){ const s=SENSORS[sensorKey];
+  if(sensorKey==="custom"){ s.az=+cAz.value; s.el=+cEl.value; const r=+cR.value; s.drone={cons:r,text:r}; }
+  if(sensorKey==="array"){ s.az=+aAz.value; s.el=+aEl.value; const a=arrayRange(0.02); s.drone={cons:a.R*Math.pow(10,-19/40),text:a.R}; // conservative = RFbeam-style 25 dB vs 6 dB
+    const rule=aRule.value; s.note=`EIRP ${a.eirp.toFixed(1)} dBm ${rule==="lic"?"(licensed, your figure)":"= the "+(rule==="15249"?"15.249":"15.245")+" cap at "+FCC[rule].band}. Receive gain ${a.Gr.toFixed(1)} dBi from ${aN.value} elements — all sectors formed simultaneously in DSP, no time-sharing loss. Drone body (0.02 m²) ${a.R.toFixed(0)} m textbook. Engineering reading of the rules, not legal advice.`; }
+  return s; }
+function ranges(){ const s=sensor(); if(s.tiers){ return {car:Math.max(...s.tiers.map(t=>t.Rc)),drone:Math.max(...s.tiers.map(t=>t.Rd))}; } const d=s.drone[mode]; return {car:d*CAR_SCALE,drone:d}; }
+
+// ------------------------------------------------------------ geometry
+const OUTER=MAP.stadium[0], INNER=MAP.stadium.slice(1);
+let sx=0,sy=0; OUTER.forEach(p=>{sx+=p[0];sy+=p[1];}); const CEN=[sx/OUTER.length,sy/OUTER.length];
+function signedArea(r){let a=0;for(let i=0;i<r.length-1;i++)a+=r[i][0]*r[i+1][1]-r[i+1][0]*r[i][1];return a/2;}
+const CCW=signedArea(OUTER)>0;
+function pointInRing(x,y,r){let inside=false;for(let i=0,j=r.length-1;i<r.length;j=i++){const xi=r[i][0],yi=r[i][1],xj=r[j][0],yj=r[j][1];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))inside=!inside;}return inside;}
+function distToRing(x,y,r){let best=1e18;for(let i=0;i<r.length-1;i++){const ax=r[i][0],ay=r[i][1],bx=r[i+1][0],by=r[i+1][1];const dx=bx-ax,dy=by-ay;const L2=dx*dx+dy*dy||1e-9;let t=((x-ax)*dx+(y-ay)*dy)/L2;t=Math.max(0,Math.min(1,t));const px=ax+t*dx-x,py=ay+t*dy-y;const d=px*px+py*py;if(d<best)best=d;}return Math.sqrt(best);}
+const EXT=(()=>{let m=0;OUTER.forEach(p=>{m=Math.max(m,Math.abs(p[0]-CEN[0]),Math.abs(p[1]-CEN[1]));});return m;})();
+
+// ------------------------------------------------------------- three
+const canvas=document.getElementById("gl");
+let renderer=null;
+try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance"});}catch(e1){try{renderer=new THREE.WebGLRenderer({canvas,antialias:false});}catch(e2){showErr("3-D view unavailable: no WebGL context. Coverage numbers are still computed.");}}
+if(renderer)renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x0E0F12); scene.fog=new THREE.Fog(0x0E0F12,900,2600);
+const camera=new THREE.PerspectiveCamera(50,1,0.5,6000);
+const target=new THREE.Vector3(CEN[0],15,-CEN[1]); let sph={r:700,theta:-0.7,phi:0.9};
+function placeCamera(){camera.position.set(target.x+sph.r*Math.sin(sph.phi)*Math.sin(sph.theta),target.y+sph.r*Math.cos(sph.phi),target.z+sph.r*Math.sin(sph.phi)*Math.cos(sph.theta));camera.lookAt(target);}
+scene.add(new THREE.HemisphereLight(0xdde3ee,0x1a1c22,0.95));
+const sun=new THREE.DirectionalLight(0xffe9d0,0.8); sun.position.set(-400,600,300); scene.add(sun);
+
+// ------------------------------------------------ ground map (canvas texture)
+const GSIZE=1400,GPX=2048,SCALE=GPX/GSIZE;
+const gcv=document.createElement("canvas"); gcv.width=gcv.height=GPX; const g=gcv.getContext("2d");
+const toPx=(p)=>[(p[0]-CEN[0])*SCALE+GPX/2,(CEN[1]-p[1])*SCALE+GPX/2];
+function poly(ctx,ring,fill,stroke,lw){ctx.beginPath();ring.forEach((p,i)=>{const q=toPx(p);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke();}}
+function line(ctx,pts,stroke,lw,dash){ctx.beginPath();pts.forEach((p,i)=>{const q=toPx(p);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.setLineDash(dash||[]);ctx.lineCap="round";ctx.lineJoin="round";ctx.stroke();ctx.setLineDash([]);}
+const ROADW={motorway:14,motorway_link:8,trunk:12,primary:11,secondary:10,tertiary:9,unclassified:7,residential:7,living_street:6,service:4.5};
+function drawMap(){
+  g.fillStyle="#14161B";g.fillRect(0,0,GPX,GPX);
+  MAP.grass.forEach(r=>poly(g,r,"#1A241C")); MAP.parking.forEach(r=>poly(g,r,"#1B1D23","#262932",1)); MAP.pitches.forEach(o=>poly(g,o.p,o.c==="track"?"#3A2A25":"#1F3F27"));
+  const rd=MAP.roads.slice().sort((a,b)=>(ROADW[a.c]||5)-(ROADW[b.c]||5));
+  rd.forEach(r=>line(g,r.p,"#0B0C0F",(ROADW[r.c]||5)*SCALE+2*SCALE)); rd.forEach(r=>line(g,r.p,r.c.startsWith("motorway")?"#4A4A50":"#3A3C44",(ROADW[r.c]||5)*SCALE));
+  MAP.paths.forEach(r=>line(g,r.p,"#2A2D35",1.6*SCALE)); MAP.fences.forEach(f=>line(g,f.p,"#8C6A3A",1.2*SCALE,[6,5]));
+  MAP.buildings.forEach(b=>poly(g,b.p,"#23262E","#30343E",1)); poly(g,OUTER,"#2A2621","#BF5700",2.5);
+  g.fillStyle="#C9C4B8";g.textAlign="center";g.textBaseline="middle"; const done={};
+  MAP.roads.filter(r=>r.n).sort((a,b)=>(ROADW[b.c]||5)-(ROADW[a.c]||5)).forEach(r=>{ if((done[r.n]||0)>=2)return; let best=null; for(let i=0;i<r.p.length-1;i++){const L=Math.hypot(r.p[i+1][0]-r.p[i][0],r.p[i+1][1]-r.p[i][1]);if(!best||L>best.L)best={i,L};} if(!best||best.L<45)return;
+    const a=toPx(r.p[best.i]),b=toPx(r.p[best.i+1]); let ang=Math.atan2(b[1]-a[1],b[0]-a[0]); if(ang>Math.PI/2||ang<-Math.PI/2)ang+=Math.PI; const px=Math.max(13,Math.min(22,(ROADW[r.c]||6)*SCALE*1.35));
+    g.save();g.translate((a[0]+b[0])/2,(a[1]+b[1])/2);g.rotate(ang);g.font=`600 ${px}px "Barlow Condensed","Arial Narrow",sans-serif`;g.lineWidth=4;g.strokeStyle="#0E0F12";g.strokeText(r.n,0,0);g.fillText(r.n,0,0);g.restore();done[r.n]=(done[r.n]||0)+1;});
+  g.save();g.translate(...toPx(CEN));g.font='700 26px "Barlow Condensed","Arial Narrow",sans-serif';g.fillStyle="#E07A2E";g.textAlign="center";g.fillText("DKR",0,0);g.restore();
+}
+const gtex=new THREE.CanvasTexture(gcv); gtex.anisotropy=8;
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(GSIZE,GSIZE),new THREE.MeshLambertMaterial({map:gtex})); ground.rotation.x=-Math.PI/2; ground.position.set(CEN[0],0,-CEN[1]); scene.add(ground);
+(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(()=>{drawMap();gtex.needsUpdate=true;}); drawMap();
+const bp=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({transparent:true,opacity:0.7,depthWrite:false})); bp.rotation.x=-Math.PI/2; bp.position.set(CEN[0],0.15,-CEN[1]); bp.visible=false; scene.add(bp);
+
+// ------------------------------------------------------- 3-D massing
+function shapeFrom(ring,holes){const sh=new THREE.Shape(ring.map(p=>new THREE.Vector2(p[0],p[1])));(holes||[]).forEach(h=>sh.holes.push(new THREE.Path(h.map(p=>new THREE.Vector2(p[0],p[1])))));return sh;}
+function extrude(ring,holes,h,mat){const m=new THREE.Mesh(new THREE.ExtrudeGeometry(shapeFrom(ring,holes),{depth:h,bevelEnabled:false}),mat);m.rotation.x=-Math.PI/2;return m;}
+const bmat=new THREE.MeshLambertMaterial({color:0x33363F}), smat=new THREE.MeshLambertMaterial({color:0x5C5852});
+MAP.buildings.forEach(b=>{if(b.p.length>=4)scene.add(extrude(b.p,[],Math.min(b.h,70),bmat));});
+scene.add(extrude(OUTER,INNER,45,smat));
+INNER.forEach(r=>{const f=new THREE.Mesh(new THREE.ShapeGeometry(shapeFrom(r)),new THREE.MeshLambertMaterial({color:0x2E6B3A}));f.rotation.x=-Math.PI/2;f.position.y=0.3;scene.add(f);});
+
+// ------------------------------------------------------------- nodes
+const nodeGroup=new THREE.Group(),wedgeGroup=new THREE.Group(),sectorGroup=new THREE.Group(); scene.add(nodeGroup,wedgeGroup,sectorGroup);
+const nodeMat=new THREE.MeshLambertMaterial({color:0xBF5700,emissive:0x5a2800});
+const wedgeMat=new THREE.MeshBasicMaterial({color:0x3C7FC0,transparent:true,opacity:0.13,side:THREE.DoubleSide,depthWrite:false});
+const secMat={car:new THREE.MeshBasicMaterial({color:0xD9A441,transparent:true,opacity:0.14,depthWrite:false,side:THREE.DoubleSide}),drone:new THREE.MeshBasicMaterial({color:0x3C7FC0,transparent:true,opacity:0.14,depthWrite:false,side:THREE.DoubleSide})};
+const secEdge={car:new THREE.LineBasicMaterial({color:0xD9A441,transparent:true,opacity:0.7}),drone:new THREE.LineBasicMaterial({color:0x6FA6DD,transparent:true,opacity:0.7})};
+let nodes=[];
+const perimLen=(()=>{let L=0;for(let i=0;i<OUTER.length-1;i++)L+=Math.hypot(OUTER[i+1][0]-OUTER[i][0],OUTER[i+1][1]-OUTER[i][1]);return L;})();
+function wallPoints(n){const pts=[];let acc=0,seg=0,segLen=Math.hypot(OUTER[1][0]-OUTER[0][0],OUTER[1][1]-OUTER[0][1]);
+  for(let k=0;k<n;k++){const dT=(k+0.5)/n*perimLen;while(acc+segLen<dT&&seg<OUTER.length-2){acc+=segLen;seg++;segLen=Math.hypot(OUTER[seg+1][0]-OUTER[seg][0],OUTER[seg+1][1]-OUTER[seg][1]);}
+    const t=(dT-acc)/segLen;const a=OUTER[seg],b=OUTER[seg+1];const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t;const ex=b[0]-a[0],ey=b[1]-a[1];let nx=ey,ny=-ex;if(CCW){nx=-nx;ny=-ny;}const L=Math.hypot(nx,ny)||1;nx/=L;ny/=L;
+    if((x+nx-CEN[0])**2+(y+ny-CEN[1])**2<(x-CEN[0])**2+(y-CEN[1])**2){nx=-nx;ny=-ny;} pts.push({x,y,nx,ny});} return pts;}
+function frame(node){const cy=Math.cos(node.yaw),sy=Math.sin(node.yaw),ct=Math.cos(node.tilt),st=Math.sin(node.tilt);return{f:[cy*ct,st,sy*ct],r:[-sy,0,cy],u:[-cy*st,ct,-sy*st]};}
+// ---------------------------------------------------------- occlusion
+// Buildings are opaque prisms (OSM footprint + height). Per radar position, one ray per
+// 0.5° azimuth bin records (r_near, r_far, roof) for every building it crosses; a target
+// is blocked when the line to it dips below that roof at either crossing (the line's
+// height is linear in range, so the minimum is at an end). Tables are cached per position.
+const OCC_NAZ=720,OCC=new Map();let occOn=true;
+const BLD=MAP.buildings.filter(b=>b.p.length>=4).map(b=>{const p=b.p.slice();if(p[0][0]!==p[p.length-1][0]||p[0][1]!==p[p.length-1][1])p.push(p[0]);return{p,h:Math.min(b.h,70)};});
+function pip(x,y,p){let ins=false;for(let i=0,j=p.length-2;i<p.length-1;j=i++){const xi=p[i][0],yi=p[i][1],xj=p[j][0],yj=p[j][1];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))ins=!ins;}return ins;}
+function occTable(x,y){const key=(Math.round(x*2)/2)+","+(Math.round(y*2)/2);let T=OCC.get(key);if(T)return T;T=new Array(OCC_NAZ).fill(null);const step=2*Math.PI/OCC_NAZ;
+  for(const b of BLD){if(pip(x,y,b.p))continue;const n=b.p.length-1;let cx=0,cy=0;for(let i=0;i<n;i++){cx+=b.p[i][0];cy+=b.p[i][1];}cx/=n;cy/=n;
+    const a0=Math.atan2(cy-y,cx-x);let lo=0,hi=0;for(let i=0;i<n;i++){let d=Math.atan2(b.p[i][1]-y,b.p[i][0]-x)-a0;d=Math.atan2(Math.sin(d),Math.cos(d));if(d<lo)lo=d;if(d>hi)hi=d;}
+    const k0=Math.floor((a0+lo)/step),k1=Math.ceil((a0+hi)/step);
+    for(let k=k0;k<=k1;k++){const az=(k+0.5)*step,dx=Math.cos(az),dy=Math.sin(az);let tn=Infinity,tf=-Infinity,c=0;
+      for(let i=0;i<n;i++){const ax=b.p[i][0],ay=b.p[i][1],ex=b.p[i+1][0]-ax,ey=b.p[i+1][1]-ay;const den=dx*ey-dy*ex;if(Math.abs(den)<1e-12)continue;const t=((ax-x)*ey-(ay-y)*ex)/den,s=((ax-x)*dy-(ay-y)*dx)/den;if(s<0||s>1||t<=0)continue;c++;if(t<tn)tn=t;if(t>tf)tf=t;}
+      if(c<2)continue;const bin=((k%OCC_NAZ)+OCC_NAZ)%OCC_NAZ;(T[bin]||(T[bin]=[])).push(tn,tf,b.h);}}
+  OCC.set(key,T);return T;}
+function blocked(node,X,Y,Z){const x0=node.X,y0=-node.Z,h0=node.Y,dx=X-x0,dy=-Z-y0,r=Math.hypot(dx,dy);if(r<1e-6)return false;
+  const T=node.occ||(node.occ=occTable(x0,y0));let az=Math.atan2(dy,dx);if(az<0)az+=2*Math.PI;const L=T[Math.min(OCC_NAZ-1,Math.floor(az/(2*Math.PI/OCC_NAZ)))];if(!L)return false;
+  const dz=Y-h0;for(let i=0;i<L.length;i+=3){const rn=L[i];if(rn>=r)continue;const zn=h0+dz*rn/r,zf=h0+dz*Math.min(L[i+1],r)/r;if(Math.min(zn,zf)<L[i+2])return true;}return false;}
+// Every beam carries its own range per target class (node.Rd drone, node.Rc car), so
+// multi-tier products and single-beam sensors go through the same test.
+function covered(node,X,Y,Z,cls){const R=cls==="car"?node.Rc:node.Rd;if(R<=0)return false;const vx=X-node.X,vy=Y-node.Y,vz=Z-node.Z;if(vx*vx+vy*vy+vz*vz>R*R)return false;const F=node.fr;const lx=vx*F.f[0]+vy*F.f[1]+vz*F.f[2];if(lx<=0)return false;const ly=vx*F.u[0]+vy*F.u[1]+vz*F.u[2],lz=vx*F.r[0]+vy*F.r[1]+vz*F.r[2];if(Math.abs(Math.atan2(lz,lx))>node.hAz||Math.abs(Math.atan2(ly,Math.hypot(lx,lz)))>node.hEl)return false;return !(occOn&&blocked(node,X,Y,Z));}
+function seenBy(X,Y,Z,cls){let c=0;for(const n of nodes){if(covered(n,X,Y,Z,cls)){c++;if(c>=2)break;}}return c;}
+const AIM_ALT={drone:25,split:12,street:1.5};
+// Elevation sectors: a nodding mount time-shares K tilt positions. Coverage is the
+// UNION of the K sheets (each dwell is a full frame, so per-look range is unchanged);
+// the cost is revisit rate, 20 Hz / K. With K = 1 the 'Aim' control sets the tilt;
+// with K > 1 the sectors are spread over what the zone needs from this height:
+// the street at the zone edge up to a 60 m drone 40 m out.
+// Operating concept for K >= 2: ONE sector looks down at the street 60 m out; the
+// remaining K-1 are spread over the drone band (5 m at the zone edge .. 60 m at 40 m out).
+function sectorTilts(K,Y,depth,elBw){
+  if(K===1){const D=Math.min(0.6*ranges().drone,depth);return[Math.atan2(AIM_ALT[aim]-Y,D)];}
+  const dLo=Math.atan2(5-Y,depth),dHi=Math.atan2(60-Y,40),bw=elBw*Math.PI/180;
+  const out=[Math.atan2(1.5-Y,60)];const kd=K-1;
+  if(kd===1)out.push(0.5*(dLo+dHi));else{const a=dLo+bw/2,b=dHi-bw/2;for(let i=0;i<kd;i++)out.push(a+(b-a)*i/(kd-1));}
+  return out;}
+function layout(n,mount,tiltOff){const s=sensor(),R=ranges();const K=+nK.value;nodes=[];
+  const mk=(X,Y,Z,yaw,tilt,az,el,Rd,Rc)=>{const node={X,Y,Z,yaw,tilt,hAz:az/2*Math.PI/180,hEl:el/2*Math.PI/180,Rd,Rc};node.fr=frame(node);nodes.push(node);};
+  wallPoints(n).forEach(p=>{const X=p.x,Z=-p.y,Y=mount;const yaw=Math.atan2(-p.ny,p.nx);
+    if(s.tiers){ s.tiers.forEach(t=>{
+        if(t.kind==="up"){ mk(X,Y,Z,yaw,Math.PI/2,t.az,t.el,t.Rd,t.Rc); return; }
+        if(t.kind==="air"){ mk(X,Y,Z,yaw,(+mAim.value)*Math.PI/180,t.az,t.el,t.Rd,t.Rc); return; }
+        if(t.kind==="ground"){ mk(X,Y,Z,yaw,(+mSr.value)*Math.PI/180,t.az,t.el,t.Rd,t.Rc); return; }
+        // fan: fixed BOM tilt when K = 1, nodding sectors when K > 1; elevation FOV widened by DBF (pEl)
+        const el=+pEl.value;const tilts=K>1?sectorTilts(K,Y,+nZ.value,el):[(+pTilt.value)*Math.PI/180];
+        tilts.forEach(tt=>mk(X,Y,Z,yaw,tt+tiltOff*Math.PI/180,t.az,el,t.Rd,t.Rc)); }); }
+    else sectorTilts(K,Y,+nZ.value,s.el).forEach(t=>mk(X,Y,Z,yaw,t+tiltOff*Math.PI/180,s.az,s.el,R.drone,R.car)); });
+  return R;}
+function wedgeGeometry(node,R,na=10,ne=6){const pos=[],edges=[];const F=node.fr;const apex=[node.X,node.Y,node.Z];
+  const dir=(az,el)=>{const ca=Math.cos(az),sa=Math.sin(az),ce=Math.cos(el),se=Math.sin(el);const lx=ca*ce,ly=se,lz=sa*ce;return[apex[0]+R*(lx*F.f[0]+ly*F.u[0]+lz*F.r[0]),apex[1]+R*(lx*F.f[1]+ly*F.u[1]+lz*F.r[1]),apex[2]+R*(lx*F.f[2]+ly*F.u[2]+lz*F.r[2])];};
+  const P=[];for(let i=0;i<=na;i++){P.push([]);for(let j=0;j<=ne;j++)P[i].push(dir(-node.hAz+2*node.hAz*i/na,-node.hEl+2*node.hEl*j/ne));}
+  const tri=(a,b,c)=>pos.push(...a,...b,...c);for(let i=0;i<na;i++)for(let j=0;j<ne;j++){tri(P[i][j],P[i+1][j],P[i+1][j+1]);tri(P[i][j],P[i+1][j+1],P[i][j+1]);}
+  for(let i=0;i<na;i++){tri(apex,P[i][0],P[i+1][0]);tri(apex,P[i+1][ne],P[i][ne]);}for(let j=0;j<ne;j++){tri(apex,P[0][j+1],P[0][j]);tri(apex,P[na][j],P[na][j+1]);}
+  const E=(a,b)=>edges.push(...a,...b);E(apex,P[0][0]);E(apex,P[na][0]);E(apex,P[0][ne]);E(apex,P[na][ne]);for(let i=0;i<na;i++){E(P[i][0],P[i+1][0]);E(P[i][ne],P[i+1][ne]);}for(let j=0;j<ne;j++){E(P[0][j],P[0][j+1]);E(P[na][j],P[na][j+1]);}
+  const gg=new THREE.BufferGeometry();gg.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));gg.computeVertexNormals();const eg=new THREE.BufferGeometry();eg.setAttribute("position",new THREE.Float32BufferAttribute(edges,3));return{g:gg,eg};}
+function sectorGeometry(node,R,yLevel,na=24){const dy=yLevel-node.Y;const lo=node.tilt-node.hEl,hi=node.tilt+node.hEl;const rAt=(el)=>{if(Math.abs(Math.sin(el))<1e-4)return dy===0?R:null;const rr=dy/Math.sin(el);return rr>0?Math.min(rr,R):null;};
+  let rNear=0,rFar=R; if(dy<0){if(lo>=0)return null;rNear=hi>=0?0:Math.min(rAt(hi)||R,R);const rf=rAt(lo);rFar=rf===null?R:rf;} else if(dy>0){if(hi<=0)return null;rFar=lo<=0?R:Math.min(rAt(lo)||R,R);const rn=rAt(hi);rNear=rn===null?0:rn;} else{if(lo>0||hi<0)return null;}
+  const pos=[];const c=[node.X,yLevel+0.25,node.Z];for(let i=0;i<na;i++){const a0=node.yaw-node.hAz+2*node.hAz*i/na,a1=node.yaw-node.hAz+2*node.hAz*(i+1)/na;const p=(r,a)=>[c[0]+r*Math.cos(a),c[1],c[2]+r*Math.sin(a)];pos.push(...p(rNear,a0),...p(rFar,a0),...p(rFar,a1),...p(rNear,a0),...p(rFar,a1),...p(rNear,a1));}
+  const gg=new THREE.BufferGeometry();gg.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));const ed=[];for(let i=0;i<na;i++){const a0=node.yaw-node.hAz+2*node.hAz*i/na,a1=node.yaw-node.hAz+2*node.hAz*(i+1)/na;ed.push(c[0]+rFar*Math.cos(a0),c[1],c[2]+rFar*Math.sin(a0),c[0]+rFar*Math.cos(a1),c[1],c[2]+rFar*Math.sin(a1));}
+  const eg=new THREE.BufferGeometry();eg.setAttribute("position",new THREE.Float32BufferAttribute(ed,3));return{g:gg,eg};}
+function drawNodes(R){[nodeGroup,wedgeGroup,sectorGroup].forEach(G=>{while(G.children.length)G.remove(G.children[0]);});
+  const drawnAt=new Set();
+  nodes.forEach(n=>{const key=n.X.toFixed(1)+","+n.Z.toFixed(1);if(!drawnAt.has(key)){drawnAt.add(key);const m=new THREE.Mesh(new THREE.SphereGeometry(2.2,12,10),nodeMat);m.position.set(n.X,n.Y,n.Z);nodeGroup.add(m);const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,n.Y,6),nodeMat);mast.position.set(n.X,n.Y/2,n.Z);nodeGroup.add(mast);}
+    if(lWedge.checked&&lDr.checked&&n.Rd>0){const{g:gg,eg}=wedgeGeometry(n,Math.min(n.Rd,900));wedgeGroup.add(new THREE.Mesh(gg,wedgeMat));wedgeGroup.add(new THREE.LineSegments(eg,new THREE.LineBasicMaterial({color:0x6FA6DD,transparent:true,opacity:0.45})));}
+    [["car",Math.min(n.Rc,900),1.5,lCar.checked],["drone",Math.min(n.Rd,900),+nH.value,lDr.checked]].forEach(([k,r,yl,on])=>{if(!on||r<=0)return;const sg=sectorGeometry(n,r,yl);if(!sg)return;sectorGroup.add(new THREE.Mesh(sg.g,secMat[k]));sectorGroup.add(new THREE.LineSegments(sg.eg,secEdge[k]));});});}
+
+// ------------------------------------------------------- zone + stats
+const ST={cell:6};let zonePts=[];
+function buildZone(depth){const half=EXT+depth+20;zonePts=[];for(let x=CEN[0]-half;x<=CEN[0]+half;x+=ST.cell)for(let y=CEN[1]-half;y<=CEN[1]+half;y+=ST.cell){if(pointInRing(x,y,OUTER))continue;if(distToRing(x,y,OUTER)<=depth)zonePts.push([x,-y]);}}
+function zoneStats(nodeList,R){let car=0,d1=0;const N=zonePts.length||1;const alts=[7.5,15,25,35,45,55];
+  for(const[X,Z]of zonePts){for(const n of nodeList){if(covered(n,X,1.5,Z,"car")){car++;break;}} let hit=false;for(const a of alts){for(const n of nodeList){if(covered(n,X,a,Z,"drone")){hit=true;break;}}if(hit)break;}if(hit)d1++;}
+  return{car:car/N,d1:d1/N};}
+function nodesNeeded(mount,tiltOff){const saved=nodes;for(let n=1;n<=60;n++){const R=layout(n,mount,tiltOff);if(zoneStats(nodes,R).d1>=0.9){nodes=saved;return n;}}nodes=saved;return null;}
+// The tile 'zone · drones seen' is the union over the sectors; the HUD also reports revisit rate.
+
+// ------------------------------------------------------- slice heatmap
+const SL={cell:3};let slice=null,sliceTex=null,sliceData=null,SLN=0,SLHALF=0;
+function buildSlice(){SLHALF=EXT+(+nZ.value)+20;SLN=Math.ceil(2*SLHALF/SL.cell);if(slice)scene.remove(slice);sliceData=new Uint8Array(SLN*SLN*4);sliceTex=new THREE.DataTexture(sliceData,SLN,SLN,THREE.RGBAFormat);sliceTex.magFilter=sliceTex.minFilter=THREE.NearestFilter;
+  slice=new THREE.Mesh(new THREE.PlaneGeometry(2*SLHALF,2*SLHALF),new THREE.MeshBasicMaterial({map:sliceTex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));slice.rotation.x=-Math.PI/2;slice.position.set(CEN[0],0,-CEN[1]);scene.add(slice);}
+function paintSlice(h,R){const depth=+nZ.value;for(let j=0;j<SLN;j++)for(let i=0;i<SLN;i++){const x=CEN[0]-SLHALF+(i+0.5)*SL.cell,y=CEN[1]+SLHALF-(j+0.5)*SL.cell;const k=(j*SLN+i)*4;let a=0,r=0,gg=0,b=0;
+  if(lDr.checked&&!pointInRing(x,y,OUTER)&&distToRing(x,y,OUTER)<=depth){const c=seenBy(x,h,-y,"drone");if(c===1){r=0x3C;gg=0x7F;b=0xC0;a=120;}else if(c>=2){r=0x4C;gg=0xAF;b=0x7A;a=140;}}
+  sliceData[k]=r;sliceData[k+1]=gg;sliceData[k+2]=b;sliceData[k+3]=a;}sliceTex.needsUpdate=true;slice.position.y=h+0.4;}
+
+// ============================================================ LIVE TARGETS
+const rng=(a,b)=>a+Math.random()*(b-a);
+// ---- cars on the real roads ----
+const DRIVABLE=new Set(["motorway","motorway_link","trunk","primary","secondary","tertiary","unclassified","residential","living_street"]);
+const SPEED={motorway:25,motorway_link:18,trunk:20,primary:14,secondary:12,tertiary:12,unclassified:8,residential:8,living_street:5};
+const ROADS=MAP.roads.filter(r=>DRIVABLE.has(r.c)&&r.p.length>=2).map(r=>{const cum=[0];for(let i=1;i<r.p.length;i++)cum.push(cum[i-1]+Math.hypot(r.p[i][0]-r.p[i-1][0],r.p[i][1]-r.p[i-1][1]));return{p:r.p,cum,L:cum[cum.length-1],v:SPEED[r.c]||8};}).filter(r=>r.L>40);
+const carGeo=new THREE.BoxGeometry(4.5,1.5,1.9);
+const carSeen=new THREE.MeshLambertMaterial({color:0xD9A441,emissive:0x6a4a10}), carDim=new THREE.MeshLambertMaterial({color:0x4A4640});
+const carGroup=new THREE.Group(); scene.add(carGroup); let cars=[];
+function roadPoint(road,s){s=Math.max(0,Math.min(road.L,s));let i=1;while(i<road.cum.length-1&&road.cum[i]<s)i++;const t=(s-road.cum[i-1])/((road.cum[i]-road.cum[i-1])||1e-9);const a=road.p[i-1],b=road.p[i];return{x:a[0]+(b[0]-a[0])*t,y:a[1]+(b[1]-a[1])*t,hd:Math.atan2(b[1]-a[1],b[0]-a[0])};}
+function spawnCar(){const road=ROADS[Math.floor(Math.random()*ROADS.length)];const m=new THREE.Mesh(carGeo,carDim);carGroup.add(m);const c={road,s:Math.random()*road.L,dir:Math.random()<0.5?1:-1,m,seen:false};const q=roadPoint(road,c.s);m.position.set(q.x,0.9,-q.y);m.rotation.y=q.hd;return c;}
+function setCarCount(n){while(cars.length<n)cars.push(spawnCar());while(cars.length>n){const c=cars.pop();carGroup.remove(c.m);}}
+function updateCars(dt,R){let seen=0,inZone=0;const depth=+nZ.value;
+  for(const c of cars){c.s+=c.dir*c.road.v*dt;if(c.s<0||c.s>c.road.L){const nr=ROADS[Math.floor(Math.random()*ROADS.length)];c.road=nr;c.dir=Math.random()<0.5?1:-1;c.s=c.dir>0?0:nr.L;}
+    const q=roadPoint(c.road,c.s);c.m.position.set(q.x,0.9,-q.y);c.m.rotation.y=q.hd;
+    const inz=!pointInRing(q.x,q.y,OUTER)&&distToRing(q.x,q.y,OUTER)<=depth;if(inz)inZone++;
+    c.seen=lCar.checked&&seenBy(q.x,1.5,-q.y,"car")>0;c.m.material=c.seen?carSeen:carDim;if(c.seen&&inz)seen++;}
+  return{seen,inZone};}
+// ---- drones ----
+const droneGroup=new THREE.Group(); scene.add(droneGroup); let drones=[];
+const dBodySeen=new THREE.MeshLambertMaterial({color:0x3C7FC0,emissive:0x1c4a7a}), dBodyMiss=new THREE.MeshLambertMaterial({color:0xC94F4F,emissive:0x5a1c1c});
+const stemSeen=new THREE.LineBasicMaterial({color:0x3C7FC0,transparent:true,opacity:0.55}), stemMiss=new THREE.LineBasicMaterial({color:0xC94F4F,transparent:true,opacity:0.45});
+const dGeo=new THREE.SphereGeometry(1.6,10,8), armGeo=new THREE.BoxGeometry(5,0.3,0.3);
+function makeDroneMesh(){const grp=new THREE.Group();const body=new THREE.Mesh(dGeo,dBodyMiss);grp.add(body);const a1=new THREE.Mesh(armGeo,dBodyMiss);a1.rotation.y=Math.PI/4;const a2=new THREE.Mesh(armGeo,dBodyMiss);a2.rotation.y=-Math.PI/4;grp.add(a1,a2);
+  const stem=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(0,-1,0)]),stemMiss);grp.add(stem);grp.userData={body,a1,a2,stem};return grp;}
+function addDrone(x,y,alt,opts){const m=makeDroneMesh();droneGroup.add(m);m.position.set(x,alt,-y);m.userData.stem.scale.y=alt;const d={x,y,alt,m,seen:false,firstSeenDist:null,reached:false,vx:0,vy:0,hover:true,...(opts||{})};drones.push(d);return d;}
+function clearDrones(){drones.forEach(d=>droneGroup.remove(d.m));drones=[];warnHist=[];leaks=0;}
+let warnHist=[],leaks=0;
+function launchSwarm(n,bearing){const depth=+nZ.value;const dist=EXT+depth+180;const lo=Math.min(+nAltLo.value,+nAltHi.value),hi=Math.max(+nAltLo.value,+nAltHi.value);const v=+nSp.value;
+  for(let i=0;i<n;i++){const b=bearing+rng(-0.25,0.25);const spread=rng(-60,60);const x=CEN[0]+dist*Math.cos(b)-spread*Math.sin(b),y=CEN[1]+dist*Math.sin(b)+spread*Math.cos(b);const alt=rng(lo,hi);
+    const d=addDrone(x,y,alt,{hover:false});const tx=CEN[0]+rng(-40,40),ty=CEN[1]+rng(-40,40);const L=Math.hypot(tx-x,ty-y);const sp=v*rng(0.85,1.15);d.vx=(tx-x)/L*sp;d.vy=(ty-y)/L*sp;}}
+function updateDrones(dt,R){let seen=0;
+  for(const d of drones){ if(!d.hover&&!d.reached){d.x+=d.vx*dt;d.y+=d.vy*dt;const dw=distToRing(d.x,d.y,OUTER);if(dw<6||pointInRing(d.x,d.y,OUTER)){d.reached=true;if(d.firstSeenDist===null){d.firstSeenDist=0;leaks++;warnHist.push(0);}}}
+    const c=lDr.checked?seenBy(d.x,d.alt,-d.y,"drone"):0; d.seen=c>0; if(d.seen)seen++;
+    if(d.seen&&d.firstSeenDist===null){d.firstSeenDist=distToRing(d.x,d.y,OUTER);warnHist.push(d.firstSeenDist);}
+    d.m.position.set(d.x,d.alt,-d.y);const u=d.m.userData;const mat=d.seen?dBodySeen:dBodyMiss;u.body.material=mat;u.a1.material=mat;u.a2.material=mat;u.stem.material=d.seen?stemSeen:stemMiss;u.stem.scale.y=d.alt;
+    u.a1.rotation.y+=dt*40;u.a2.rotation.y-=dt*40;}
+  return seen;}
+
+// ---------------------------------------------------------------- UI
+const $=id=>document.getElementById(id);
+const nN=$("nN"),nM=$("nM"),nT=$("nT"),nZ=$("nZ"),nH=$("nH"),nK=$("nK"),nS=$("nS"),nR=$("nR"),nO=$("nO"),cAz=$("cAz"),cEl=$("cEl"),cR=$("cR"),nCars=$("nCars"),nSw=$("nSw"),nAltLo=$("nAltLo"),nAltHi=$("nAltHi"),nSp=$("nSp");
+const aRule=$("aRule"),aEirp=$("aEirp"),aN=$("aN"),aG=$("aG"),aNF=$("aNF"),aT=$("aT"),aAz=$("aAz"),aEl=$("aEl");
+const pTilt=$("pTilt"),pEl=$("pEl"),mAim=$("mAim"),mSr=$("mSr");[pTilt,pEl,mAim,mSr].forEach(el=>el.addEventListener("input",refresh));
+function syncEirp(){ const lic=aRule.value==="lic"; aEirp.disabled=!lic; if(!lic) aEirp.value=fccEirpDbm(FCC[aRule.value].e).toFixed(1); }
+aRule.addEventListener("change",()=>{syncEirp();refresh();}); syncEirp();
+[aEirp,aN,aG,aNF,aT,aAz,aEl].forEach(el=>el.addEventListener("input",refresh));
+const lCar=$("lCar"),lDr=$("lDr"),lWedge=$("lWedge"),lOcc=$("lOcc");
+const pct=v=>(100*v).toFixed(0)+"%";
+let needTimer=null,lastDepth=null,curR=ranges();
+function refresh(){const s=sensor();occOn=lOcc.checked;$("oOcc").value=occOn?BLD.length+" bldgs":"free space";
+  $("oN").value=nN.value;$("oM").value=nM.value+" m";$("oT").value=nT.value+"°";$("oZ").value=nZ.value+" m";$("oH").value=nH.value+" m";$("oK").value=nK.value;
+  {const K=+nK.value;const tl=sectorTilts(K,+nM.value,+nZ.value,s.el).map(t=>(t*180/Math.PI).toFixed(0)+"°");
+   $("secNote").innerHTML=K===1?`One fixed sheet at ${tl[0]}; the Aim control chooses it. Revisit 20 Hz.`:`Nodding mount cycles ${K} tilts: <b>${tl[0]}</b> for the street, <b>${tl.slice(1).join(", ")}</b> for the drone band. Each dwell is a full frame, so per-look range is unchanged; revisit per sector <b>${(20/K).toFixed(1)} Hz</b> — a 12 m/s drone moves ${(12*K/20).toFixed(1)} m between looks. Adds a ~$35 servo per node.`;}
+  if(lastDepth!==+nZ.value){buildZone(+nZ.value);buildSlice();lastDepth=+nZ.value;}
+  curR=layout(+nN.value,+nM.value,+nT.value);
+  $("rCar").value=curR.car.toFixed(0)+" m";$("rDr").value=curR.drone.toFixed(0)+" m";$("sensorNote").textContent=s.note;
+  // first distance at which the street (1.5 m) and a drone at 25 m fit inside one elevation beam
+  const H=+nM.value,e=s.el*Math.PI/180;let dBoth=null;for(let d=5;d<=3000;d+=5){const sep=Math.abs(Math.atan2(25-H,d)-Math.atan2(1.5-H,d));if(sep<=e){dBoth=d;break;}}
+  $("aimNote").innerHTML=`Elevation beam ${s.el}° is a sheet <b>${(2*(+nZ.value)*Math.tan(e/2)).toFixed(0)} m</b> tall at the zone edge. From a ${H} m mount, the street and a drone at 25 m fit in one beam only beyond <b>${dBoth===null?"—":dBoth+" m"}</b>; closer in, aiming at one loses the other.`;
+  drawNodes(curR);paintSlice(+nH.value,curR);
+  const st=zoneStats(nodes,curR);$("sCar").textContent=pct(st.car);$("sDr").textContent=pct(st.d1);
+  $("hNeed").textContent="…";clearTimeout(needTimer);needTimer=setTimeout(()=>{const n=nodesNeeded(+nM.value,+nT.value);$("hNeed").textContent=n===null?">60":String(n);},30);}
+[nN,nM,nT,nZ,nK,cAz,cEl,cR,lCar,lDr,lWedge,lOcc].forEach(el=>el.addEventListener("input",refresh));
+nH.addEventListener("input",()=>{$("oH").value=nH.value+" m";paintSlice(+nH.value,curR);drawNodes(curR);});
+$("sensor").addEventListener("change",e=>{sensorKey=e.target.value;$("custom").hidden=sensorKey!=="custom";$("array").hidden=sensorKey!=="array";$("prodctl").hidden=sensorKey!=="prod";$("magosctl").hidden=sensorKey!=="magos";refresh();});
+document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-mode]").forEach(x=>x.setAttribute("aria-pressed","false"));b.setAttribute("aria-pressed","true");mode=b.dataset.mode;refresh();}));
+document.querySelectorAll("[data-aim]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-aim]").forEach(x=>x.setAttribute("aria-pressed","false"));b.setAttribute("aria-pressed","true");aim=b.dataset.aim;refresh();}));
+nCars.addEventListener("input",()=>{$("oCars").value=nCars.value;setCarCount(+nCars.value);});
+nSw.addEventListener("input",()=>$("oSw").value=nSw.value);
+const altOut=()=>$("oAlt").value=`${Math.min(+nAltLo.value,+nAltHi.value)}–${Math.max(+nAltLo.value,+nAltHi.value)} m`;[nAltLo,nAltHi].forEach(el=>el.addEventListener("input",altOut));
+nSp.addEventListener("input",()=>$("oSp").value=nSp.value+" m/s");
+$("bSwarm").addEventListener("click",()=>launchSwarm(+nSw.value,rng(0,2*Math.PI)));
+$("bSwarmAll").addEventListener("click",()=>{const n=+nSw.value;const per=Math.max(1,Math.round(n/4));for(let k=0;k<4;k++)launchSwarm(per,k*Math.PI/2+Math.PI/4);});
+$("bClear").addEventListener("click",clearDrones);
+let dropMode=false;$("bDrop").addEventListener("click",()=>{dropMode=!dropMode;$("bDrop").setAttribute("aria-pressed",String(dropMode));canvas.classList.toggle("drop",dropMode);});
+function fitBlueprint(){const w=+nS.value;const img=bp.material.map&&bp.material.map.image;const ar=img?img.height/img.width:1;bp.scale.set(w,w*ar,1);bp.rotation.z=nR.value*Math.PI/180;bp.material.opacity=+nO.value;$("oS").value=w+" m";$("oR").value=nR.value+"°";$("oO").value=(+nO.value).toFixed(2);}
+$("img").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{new THREE.TextureLoader().load(rd.result,t=>{t.anisotropy=4;bp.material.map=t;bp.material.needsUpdate=true;bp.visible=true;fitBlueprint();});};rd.readAsDataURL(f);});
+[nS,nR,nO].forEach(el=>el.addEventListener("input",fitBlueprint));
+const VIEWS={over:{t:[CEN[0],5,-CEN[1]],r:900,theta:0,phi:0.05},sw:{t:[CEN[0],20,-CEN[1]],cam:[CEN[0]-330,90,-CEN[1]+260]},ne:{t:[CEN[0],20,-CEN[1]],cam:[CEN[0]+330,90,-CEN[1]-260]},street:{t:[CEN[0]-160,8,-CEN[1]],cam:[CEN[0]-240,2,-CEN[1]+60]},drone:{t:[CEN[0],25,-CEN[1]],cam:[CEN[0]-190,40,-CEN[1]+120]},s:{t:[CEN[0],20,-CEN[1]],cam:[CEN[0]+40,80,-CEN[1]+380]}};
+function setView(v){const V=VIEWS[v];target.set(...V.t);if(V.cam){const c=new THREE.Vector3(...V.cam).sub(target);sph.r=c.length();sph.phi=Math.acos(Math.max(-1,Math.min(1,c.y/sph.r)));sph.theta=Math.atan2(c.x,c.z);}else{sph.r=V.r;sph.theta=V.theta;sph.phi=V.phi;}}
+document.querySelectorAll(".views button").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
+
+// ---------------------------------------------------------- controls
+let drag=false,lx=0,ly=0,downX=0,downY=0;const ray=new THREE.Raycaster(),groundPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0),hit=new THREE.Vector3();
+canvas.addEventListener("pointerdown",e=>{drag=true;lx=downX=e.clientX;ly=downY=e.clientY;canvas.setPointerCapture(e.pointerId);});
+canvas.addEventListener("pointerup",e=>{drag=false;if(dropMode&&Math.hypot(e.clientX-downX,e.clientY-downY)<4){const r=canvas.getBoundingClientRect();ray.setFromCamera({x:(e.clientX-r.left)/r.width*2-1,y:-((e.clientY-r.top)/r.height)*2+1},camera);if(ray.ray.intersectPlane(groundPlane,hit)){addDrone(hit.x,-hit.z,+nH.value,{hover:true});}}});
+canvas.addEventListener("pointermove",e=>{if(!drag)return;sph.theta-=(e.clientX-lx)*0.005;sph.phi=Math.max(0.03,Math.min(Math.PI/2-0.02,sph.phi-(e.clientY-ly)*0.005));lx=e.clientX;ly=e.clientY;});
+canvas.addEventListener("wheel",e=>{e.preventDefault();sph.r=Math.max(6,Math.min(2500,sph.r*Math.exp(e.deltaY*0.0012)));},{passive:false});
+const keys={};addEventListener("keydown",e=>{if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT")return;keys[e.key.toLowerCase()]=true;});addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false;});
+function fly(dt){const sp=(keys.shift?200:70)*dt;const f=new THREE.Vector3(Math.sin(sph.theta),0,Math.cos(sph.theta)).negate();const r=new THREE.Vector3(-f.z,0,f.x);if(keys.w)target.addScaledVector(f,sp);if(keys.s)target.addScaledVector(f,-sp);if(keys.d)target.addScaledVector(r,sp);if(keys.a)target.addScaledVector(r,-sp);if(keys.e)target.y+=sp;if(keys.q)target.y=Math.max(0.5,target.y-sp);}
+function resize(){const w=innerWidth,h=innerHeight;if(renderer)renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+addEventListener("resize",resize);resize();
+let last=performance.now(),hudT=0;
+function loop(now){const dt=Math.min(0.05,(now-last)/1000);last=now;fly(dt);placeCamera();
+  const cs=updateCars(dt,curR);const ds=updateDrones(dt,curR);
+  hudT+=dt;if(hudT>0.2){hudT=0;$("hCars").textContent=`${cs.seen} / ${cs.inZone}`;$("hDr").textContent=`${ds} / ${drones.length}`;$("sLive").textContent=`${ds} / ${drones.length}`;$("hLeak").textContent=String(leaks);
+    const w=warnHist.length?warnHist.reduce((a,b)=>a+b,0)/warnHist.length:null;$("sWarn").textContent=w===null?"–":w.toFixed(0)+" m";}
+  if(renderer)renderer.render(scene,camera);requestAnimationFrame(loop);}
+setView("sw");
+try{refresh();setCarCount(+nCars.value);launchSwarm(+nSw.value,rng(0,2*Math.PI));}catch(e){showErr("Setup failed: "+(e.message||e));}
+if(renderer)requestAnimationFrame(loop);
+})();
+</script>

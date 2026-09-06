@@ -1,0 +1,21 @@
+{
+  "label": "drone_dji_mini3",
+  "source": "synth",
+  "mode": "cw",
+  "session": "sim_mini3_v1",
+  "target": "DJI Mini 3 (simulated)",
+  "distance_m": 1.0,
+  "aspect": "hover",
+  "if_gain_db": 0.0,
+  "sample_rate": 50000,
+  "channels": [
+    "I",
+    "Q"
+  ],
+  "sim_rpm": 6040.0,
+  "sim_elevation_deg": 0.0,
+  "sim_body_rcs_dbsm": -17.0,
+  "sim_blade_below_body_db": 30.0,
+  "sim_seed": 10,
+  "notes": "SIMULATED, not measured. Physics per sim/drone.py; front end per sim/capture.py, calibrated to the measured empty-room floor in out/baseline/20260829_061237_empty_baseline_60s.npz"
+}

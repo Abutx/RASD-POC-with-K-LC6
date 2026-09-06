@@ -44,19 +44,30 @@ def trim_leading_zeros(data, fs, verbose=True):
 
 
 def inventory(x, fs, top=20, lo=5.0, hi=None, mains=60.0):
-    """Averaged spectrum, strongest discrete lines, mains harmonics tagged."""
+    """Averaged spectrum, strongest discrete lines, mains harmonics tagged.
+
+    Handles real (I only) and complex (I+jQ) input. With Q wired the spectrum
+    is genuinely two-sided -- approach and recede are different frequencies --
+    so the inventory reports signed frequency and the band/mains tests run on
+    the magnitude. Before Q existed this only ever saw real input; rfft would
+    raise on a complex array.
+    """
     hi = hi if hi is not None else fs / 2 * 0.999
+    cplx = np.iscomplexobj(x)
     nfft = 1 << 19
     while nfft > len(x) and nfft > 4096:
         nfft >>= 1
     nblk = max(1, len(x) // nfft)
-    acc = np.zeros(nfft // 2 + 1)
     win = np.hanning(nfft)
+    acc = np.zeros(nfft if cplx else nfft // 2 + 1)
     for i in range(nblk):
-        acc += np.abs(np.fft.rfft(x[i*nfft:(i+1)*nfft] * win)) ** 2
+        seg = x[i*nfft:(i+1)*nfft] * win
+        sp = np.fft.fftshift(np.fft.fft(seg)) if cplx else np.fft.rfft(seg)
+        acc += np.abs(sp) ** 2
     db = 10 * np.log10(acc / nblk + 1e-30)
-    fr = np.fft.rfftfreq(nfft, 1 / fs)
-    band = (fr >= lo) & (fr <= hi)
+    fr = (np.fft.fftshift(np.fft.fftfreq(nfft, 1 / fs)) if cplx
+          else np.fft.rfftfreq(nfft, 1 / fs))
+    band = (np.abs(fr) >= lo) & (np.abs(fr) <= hi)
     med = float(np.median(db[band]))
 
     idxs = np.flatnonzero(band)
@@ -75,8 +86,9 @@ def inventory(x, fs, top=20, lo=5.0, hi=None, mains=60.0):
     print(f"  {'Hz':>10} {'m/s':>9} {'dB over med':>12}  origin")
     n_mains = 0
     for i in rows:
-        h = float(fr[i]); k = round(h / mains)
-        is_m = k >= 1 and abs(h - k * mains) < 2.0
+        # mains lands at +/-k*60 on a two-sided axis, so test the magnitude
+        h = float(fr[i]); k = round(abs(h) / mains)
+        is_m = k >= 1 and abs(abs(h) - k * mains) < 2.0
         n_mains += is_m
         print(f"  {h:>10.2f} {h/P.HZ_PER_MPS:>9.3f} {db[i]-med:>11.1f}  "
               f"{'MAINS %gx%d' % (mains, k) if is_m else ''}")

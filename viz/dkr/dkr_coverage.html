@@ -1,0 +1,471 @@
+<title>DKR Radar Coverage</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --ink:#0E0F12; --panel:#17191F; --panel-2:#1E2129; --line:#2A2E38;
+    --text:#E8E4DC; --muted:#8C8A84; --accent:#BF5700; --accent-2:#E07A2E;
+    --cov1:#3C7FC0; --cov2:#4CAF7A; --warn:#D9A441;
+    --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+    --body:"Barlow","Helvetica Neue",Arial,sans-serif;
+    --mono:"JetBrains Mono","SFMono-Regular",Consolas,monospace;
+  }
+  html,body{height:100%;margin:0}
+  body{background:var(--ink);color:var(--text);font:14px/1.45 var(--body);overflow:hidden}
+  #gl{position:fixed;inset:0;display:block}
+  .rail{position:fixed;top:0;left:0;bottom:0;width:340px;background:linear-gradient(180deg,rgba(23,25,31,.96),rgba(23,25,31,.92));
+        border-right:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto;backdrop-filter:blur(6px)}
+  .brand{padding:18px 20px 12px;border-bottom:1px solid var(--line)}
+  .brand h1{font:700 30px/1 var(--display);letter-spacing:.01em;margin:0;text-wrap:balance}
+  .brand h1 span{color:var(--accent)}
+  .brand p{margin:6px 0 0;color:var(--muted);font-size:12.5px}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+  .stat{background:var(--panel-2);padding:12px 16px}
+  .stat b{display:block;font:500 26px/1 var(--mono);font-variant-numeric:tabular-nums}
+  .stat small{display:block;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-top:5px}
+  .stat.c1 b{color:var(--cov1)} .stat.c2 b{color:var(--cov2)} .stat.n b{color:var(--accent-2)}
+  section{padding:14px 20px;border-bottom:1px solid var(--line)}
+  section h2{font:600 13px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+  .row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;margin:7px 0}
+  .row label{color:var(--text)}
+  .row output,.row .val{font:500 13px var(--mono);font-variant-numeric:tabular-nums;color:var(--text);min-width:64px;text-align:right}
+  input[type=range]{width:100%;accent-color:var(--accent);margin:2px 0 0}
+  select,input[type=number],button,.file{font:14px var(--body);color:var(--text);background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:6px 8px}
+  select{width:100%}
+  input[type=number]{width:72px;text-align:right;font-family:var(--mono)}
+  button{cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent-2);outline-offset:1px}
+  .views{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .views button{padding:7px 4px;font-size:12.5px}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .seg button{border:0;border-radius:0;background:transparent;padding:7px 4px;font-size:12.5px;color:var(--muted)}
+  .seg button[aria-pressed=true]{background:var(--accent);color:#fff}
+  .note{color:var(--muted);font-size:12px;margin:8px 0 0}
+  .note em{color:var(--warn);font-style:normal}
+  .note b{font-family:var(--mono);font-weight:500;color:var(--text)}
+  .file{display:block;text-align:center}
+  .file input{display:none}
+  .legend{position:fixed;right:16px;bottom:14px;background:rgba(23,25,31,.92);border:1px solid var(--line);border-radius:4px;padding:10px 14px;font-size:12px;display:grid;gap:6px}
+  .legend div{display:flex;align-items:center;gap:8px}
+  .sw{width:14px;height:14px;border-radius:2px;display:inline-block}
+  .help{position:fixed;left:356px;bottom:14px;color:var(--muted);font-size:12px;background:rgba(14,15,18,.7);padding:6px 10px;border-radius:4px}
+  .help b{color:var(--text);font-family:var(--mono);font-weight:500}
+  .maps{position:fixed;right:16px;top:14px;font-size:12px}
+  .maps a{color:var(--text);text-decoration:none;border:1px solid var(--line);background:rgba(23,25,31,.92);padding:6px 10px;border-radius:4px}
+  .maps a:hover{border-color:var(--accent)}
+  @media (max-width:820px){.rail{width:100%;bottom:auto;max-height:52vh}.help,.maps{display:none}.legend{bottom:8px;right:8px}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<canvas id="gl"></canvas>
+
+<aside class="rail">
+  <div class="brand">
+    <h1>DKR <span>Radar</span> Coverage</h1>
+    <p>Darrell K Royal–Texas Memorial Stadium · 30.2836° N, 97.7325° W · airspace over the field, 5–60 m</p>
+  </div>
+  <div class="stats">
+    <div class="stat c1"><b id="s1">–</b><small>airspace ≥1 node</small></div>
+    <div class="stat c2"><b id="s2">–</b><small>airspace ≥2 nodes</small></div>
+    <div class="stat n"><b id="sN">–</b><small>nodes for 90%</small></div>
+    <div class="stat"><b id="sS">–</b><small>this slice covered</small></div>
+  </div>
+
+  <section>
+    <h2>Sensor</h2>
+    <select id="sensor">
+      <option value="tinyrad" selected>EV-TINYRAD24G · 75° × 15°</option>
+      <option value="klc6amp">K-LC6 + 30 dB amp · 80° × 12°</option>
+      <option value="klc6">K-LC6 bare (today) · 80° × 12°</option>
+      <option value="custom">Custom board (product target)</option>
+    </select>
+    <div class="seg" role="group" aria-label="range mode" style="margin-top:8px">
+      <button data-mode="cons" aria-pressed="false">Detect · cons.</button>
+      <button data-mode="text" aria-pressed="true">Detect · textbook</button>
+      <button data-mode="class" aria-pressed="false">Classify blades</button>
+    </div>
+    <p class="note" id="hint"></p>
+    <div id="custom" hidden>
+      <div class="row"><label>Azimuth beam</label><input type="number" id="cAz" value="90" min="5" max="180"> </div>
+      <div class="row"><label>Elevation beam</label><input type="number" id="cEl" value="30" min="5" max="180"></div>
+      <div class="row"><label>Range, m</label><input type="number" id="cR" value="300" min="5" max="2000"></div>
+    </div>
+    <p class="note" id="sensorNote"></p>
+  </section>
+
+  <section>
+    <h2>Nodes</h2>
+    <div class="row"><label>Count</label><output id="oN">8</output></div>
+    <input type="range" id="nN" min="1" max="32" value="8">
+    <div class="row"><label>Tilt offset from auto-aim</label><output id="oT">0°</output></div>
+    <input type="range" id="nT" min="-30" max="30" value="0">
+    <div class="row"><label>Mast above rim</label><output id="oM">3 m</output></div>
+    <input type="range" id="nM" min="0" max="20" value="3">
+    <div class="row"><label>Aim inward past centre</label><output id="oY">0°</output></div>
+    <input type="range" id="nY" min="-40" max="40" value="0">
+    <p class="note">Nodes sit on the upper-deck rims, evenly spaced, each auto-aimed at the centre of the airspace box (midfield, 32 m up); the tilt slider offsets that aim. Coverage volume = beam × range, drawn as a wedge.</p>
+  </section>
+
+  <section>
+    <h2>Altitude slice</h2>
+    <div class="row"><label>Height above field</label><output id="oH">30 m</output></div>
+    <input type="range" id="nH" min="0" max="90" value="30">
+    <label class="row" style="grid-template-columns:auto 1fr"><input type="checkbox" id="showWedges" checked> <span>Show coverage wedges</span></label>
+  </section>
+
+  <section>
+    <h2>Ground layer</h2>
+    <label class="file"><input type="file" id="img" accept="image/*">Load blueprint or satellite screenshot…</label>
+    <div class="row"><label>Image width on ground</label><output id="oS">300 m</output></div>
+    <input type="range" id="nS" min="100" max="800" value="300">
+    <div class="row"><label>Rotate</label><output id="oR">0°</output></div>
+    <input type="range" id="nR" min="-180" max="180" value="0">
+    <div class="row"><label>Opacity</label><output id="oO">0.85</output></div>
+    <input type="range" id="nO" min="0" max="1" step="0.05" value="0.85">
+    <p class="note">Stadium massing is approximate, from public plans: field 109.7 × 48.8 m, rims ≈36 m N · 42 m S · 46 m E · 50 m W, press box to ≈60 m. Drop in a scaled plan to check it.</p>
+  </section>
+
+  <section>
+    <h2>View</h2>
+    <div class="views">
+      <button data-view="over">Overhead</button>
+      <button data-view="west">Press box</button>
+      <button data-view="east">East deck</button>
+      <button data-view="field">Field level</button>
+      <button data-view="drone">Drone, 30 m</button>
+      <button data-view="south">South end</button>
+    </div>
+  </section>
+</aside>
+
+<div class="maps"><a href="https://www.google.com/maps/@30.2836,-97.7325,300m/data=!3m1!1e3" target="_blank" rel="noopener">Open in Google Maps · satellite ↗</a></div>
+<div class="legend">
+  <div><span class="sw" style="background:var(--cov1)"></span> covered by 1 node — detect + position</div>
+  <div><span class="sw" style="background:var(--cov2)"></span> covered by 2+ nodes — redundant fix</div>
+  <div><span class="sw" style="background:var(--accent)"></span> radar node</div>
+  <div><span class="sw" style="background:#3C7FC0;opacity:.35"></span> coverage wedge (beam × range)</div>
+</div>
+<div class="help">drag <b>orbit</b> · wheel <b>zoom</b> · <b>W A S D</b> move · <b>Q E</b> up/down · <b>Shift</b> faster</div>
+
+<div id="err" hidden style="position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:9;max-width:90vw;background:#3a1010;color:#ffd9d9;border:1px solid #a33;border-radius:4px;padding:10px 14px;font:13px/1.4 var(--mono)"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+function showErr(msg){ const e=document.getElementById("err"); e.hidden=false; e.textContent=msg; }
+window.addEventListener("error",ev=>showErr("Page error: "+(ev.message||ev.error)+(ev.lineno?" (line "+ev.lineno+")":"")));
+if(typeof THREE==="undefined"){ showErr("Three.js failed to load from cdnjs — the 3D view cannot start. Check the network and reload."); return; }
+// ------------------------------------------------------------- sensors
+// Beamwidths from datasheets; ranges are the DJI Mini 3 figures derived in
+// docs/DEMO_TWO_RADAR.md and docs/TINYRAD_BENCH.md (5 sigma, moving body).
+const SENSORS = {
+  tinyrad:{name:"EV-TINYRAD24G", az:75, el:15, cons:38, text:113, klass:9.6,
+    note:"ADF5901/5904, UG-1709: 75° × 15° beam. Mini 3 body 38 m (RFbeam-style derating) to 113 m (textbook); blade classification capped at 9.6 m by the chirp engine."},
+  klc6amp:{name:"K-LC6 + 30 dB amp", az:80, el:12, cons:18, text:18, klass:5,
+    note:"Module mounted long-axis vertical: 80° azimuth, 12° elevation sheet. Mini 3 body ~18 m; blades 1.5–5 m."},
+  klc6:{name:"K-LC6 bare + AD2", az:80, el:12, cons:4, text:4, klass:1.6,
+    note:"Today's chain. The AD2's 336 µV LSB costs 25.5 dB: Mini 3 body ~4 m, blades under 1.6 m."},
+  custom:{name:"Custom board", az:90, el:30, cons:300, text:300, klass:60,
+    note:"Product target. Set beam and range for the board you intend to build; classify range = 1/5 of detect as a placeholder."}
+};
+let sensorKey="tinyrad", mode="text";
+
+// ------------------------------------------------------------ stadium
+// x = east, y = up, z = south. Field centre at origin. Metres.
+const F = {L:109.7, W:48.8};
+const S = {
+  margin:9, lowerRun:32, lowerY0:2, lowerY1:17, gap:4,
+  west:{run:30, y0:21, y1:50, box:{depth:20, h:10}},
+  east:{run:28, y0:21, y1:46},
+  north:{run:22, y0:21, y1:36},
+  south:{run:26, y0:21, y1:42}
+};
+const innerHalfX = F.W/2 + S.margin, innerHalfZ = F.L/2 + S.margin;
+const upperInX = innerHalfX + S.lowerRun + S.gap, upperInZ = innerHalfZ + S.lowerRun + S.gap;
+// rim rectangle (top inner edge of upper decks) for node placement
+const RIM = {
+  west:{x:-(upperInX+S.west.run), y:S.west.y1},
+  east:{x:+(upperInX+S.east.run), y:S.east.y1},
+  north:{z:-(upperInZ+S.north.run), y:S.north.y1},
+  south:{z:+(upperInZ+S.south.run), y:S.south.y1}
+};
+// airspace of interest: over the field + 20 m margin, 5..60 m
+const AIR = {x:F.W/2+20, z:F.L/2+20, y0:5, y1:60, cell:5};
+
+// ------------------------------------------------------------- three
+const canvas=document.getElementById("gl");
+// WebGL can be unavailable in some mobile webviews. Fail soft: keep computing
+// and showing the coverage numbers (pure JS), and say why the 3D view is dark.
+let renderer=null;
+try{ renderer=new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:"high-performance", failIfMajorPerformanceCaveat:false}); }
+catch(e1){ try{ renderer=new THREE.WebGLRenderer({canvas, antialias:false}); } catch(e2){ showErr("3D view unavailable: this browser could not create a WebGL context ("+(e2.message||e2)+"). Coverage numbers below are still computed. Try a desktop browser or enable hardware acceleration."); } }
+if(renderer) renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x0E0F12);
+scene.fog=new THREE.Fog(0x0E0F12, 500, 1400);
+const camera=new THREE.PerspectiveCamera(50,1,0.5,4000);
+const target=new THREE.Vector3(0,20,0);
+let sph={r:330, theta:-0.9, phi:0.95};       // orbit state
+function placeCamera(){
+  camera.position.set(target.x+sph.r*Math.sin(sph.phi)*Math.sin(sph.theta),
+                      target.y+sph.r*Math.cos(sph.phi),
+                      target.z+sph.r*Math.sin(sph.phi)*Math.cos(sph.theta));
+  camera.lookAt(target);
+}
+scene.add(new THREE.HemisphereLight(0xdde3ee,0x1a1c22,0.9));
+const sun=new THREE.DirectionalLight(0xffe9d0,0.9); sun.position.set(-200,300,120); scene.add(sun);
+
+// ground + optional blueprint
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(2400,2400), new THREE.MeshLambertMaterial({color:0x14161B}));
+ground.rotation.x=-Math.PI/2; ground.position.y=-0.05; scene.add(ground);
+const bp=new THREE.Mesh(new THREE.PlaneGeometry(1,1), new THREE.MeshBasicMaterial({transparent:true,opacity:0.85,depthWrite:false}));
+bp.rotation.x=-Math.PI/2; bp.position.y=0.02; bp.visible=false; scene.add(bp);
+const grid=new THREE.GridHelper(600,60,0x2A2E38,0x1E2129); grid.position.y=0.0; scene.add(grid);
+
+// field
+const field=new THREE.Mesh(new THREE.PlaneGeometry(F.W,F.L), new THREE.MeshLambertMaterial({color:0x2E6B3A}));
+field.rotation.x=-Math.PI/2; field.position.y=0.05; scene.add(field);
+const lineMat=new THREE.LineBasicMaterial({color:0xE8E4DC,transparent:true,opacity:0.45});
+for(let i=0;i<=12;i++){ // 10-yard lines incl. end lines
+  const z=-F.L/2+9.144*i; const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-F.W/2,0.1,z),new THREE.Vector3(F.W/2,0.1,z)]);
+  scene.add(new THREE.Line(g,lineMat));
+}
+// end zones tinted
+[[-F.L/2+4.57],[F.L/2-4.57]].forEach(([z])=>{const ez=new THREE.Mesh(new THREE.PlaneGeometry(F.W,9.144),new THREE.MeshLambertMaterial({color:0x7A3A14}));ez.rotation.x=-Math.PI/2;ez.position.set(0,0.06,z);scene.add(ez);});
+
+// stands: trapezoid profile extruded along the side
+const concrete=new THREE.MeshLambertMaterial({color:0x5C5852});
+const concreteDark=new THREE.MeshLambertMaterial({color:0x3E3B37});
+function stand(run,y0,y1,len){
+  const sh=new THREE.Shape(); sh.moveTo(0,0); sh.lineTo(0,y0); sh.lineTo(run,y1); sh.lineTo(run,0); sh.lineTo(0,0);
+  const g=new THREE.ExtrudeGeometry(sh,{depth:len,bevelEnabled:false});
+  g.translate(0,0,-len/2);
+  return g;
+}
+// The profile runs 0..run along +x (outward) and is extruded along z, centred;
+// side() mirrors or rotates it so the run always points away from the field.
+function buildStands(){
+  const lenEW=2*innerHalfZ+2*S.lowerRun, lenNS=2*innerHalfX+2*S.lowerRun;
+  // lower bowl, all four sides
+  ring(S.lowerRun,S.lowerY0,S.lowerY1,innerHalfX,innerHalfZ,concreteDark);
+  // upper decks, each its own height
+  side("west",S.west.run,S.west.y0,S.west.y1,upperInX,lenEW,concrete);
+  side("east",S.east.run,S.east.y0,S.east.y1,upperInX,lenEW,concrete);
+  side("north",S.north.run,S.north.y0,S.north.y1,upperInZ,lenNS,concrete);
+  side("south",S.south.run,S.south.y0,S.south.y1,upperInZ,lenNS,concrete);
+  // press box on the west rim
+  const pb=new THREE.Mesh(new THREE.BoxGeometry(S.west.box.depth,S.west.box.h,110),new THREE.MeshLambertMaterial({color:0x2C2F38}));
+  pb.position.set(RIM.west.x-S.west.box.depth/2+2, S.west.y1+S.west.box.h/2, 0); scene.add(pb);
+  // light masts at the corners
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>{
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.9,70,8),concrete);
+    p.position.set(sx*(upperInX+20),35,sz*(upperInZ+14)); scene.add(p);
+  });
+}
+function ring(run,y0,y1,hx,hz,mat){
+  const lenEW=2*hz, lenNS=2*hx+2*run;
+  side("west",run,y0,y1,hx,lenEW,mat); side("east",run,y0,y1,hx,lenEW,mat);
+  side("north",run,y0,y1,hz,lenNS,mat); side("south",run,y0,y1,hz,lenNS,mat);
+}
+function side(which,run,y0,y1,inner,len,mat){
+  const g=stand(run,y0,y1,len);           // profile: x = 0..run (outward), y up; extruded along z centred
+  const m=new THREE.Mesh(g,mat);
+  if(which==="east"){ m.position.set(inner,0,0); }                              // +x outward
+  if(which==="west"){ m.scale.x=-1; m.position.set(-inner,0,0); }              // mirror to -x
+  if(which==="south"){ m.rotation.y=-Math.PI/2; m.position.set(0,0,inner); }  // +x -> +z
+  if(which==="north"){ m.rotation.y=Math.PI/2; m.position.set(0,0,-inner); }  // +x -> -z
+  scene.add(m);
+}
+buildStands();
+
+// ------------------------------------------------------------- nodes
+const nodeGroup=new THREE.Group(); scene.add(nodeGroup);
+const wedgeGroup=new THREE.Group(); scene.add(wedgeGroup);
+const nodeMat=new THREE.MeshLambertMaterial({color:0xBF5700,emissive:0x5a2800});
+const wedgeMat=new THREE.MeshBasicMaterial({color:0x3C7FC0,transparent:true,opacity:0.16,side:THREE.DoubleSide,depthWrite:false});
+const wedgeEdge=new THREE.LineBasicMaterial({color:0x6FA6DD,transparent:true,opacity:0.55});
+let nodes=[];
+
+function sensor(){ const s=SENSORS[sensorKey]; if(sensorKey==="custom"){ s.az=+cAz.value; s.el=+cEl.value; s.cons=s.text=+cR.value; s.klass=+cR.value/5; } return s; }
+function range(){ const s=sensor(); return mode==="cons"?s.cons: mode==="text"?s.text: s.klass; }
+
+// evenly spaced points around the rim rectangle by perimeter length
+function rimPoints(n){
+  const W=RIM.west.x, E=RIM.east.x, N=RIM.north.z, So=RIM.south.z;
+  const segs=[ // start, end, side
+    {a:[W,N],b:[E,N],side:"north"},{a:[E,N],b:[E,So],side:"east"},{a:[E,So],b:[W,So],side:"south"},{a:[W,So],b:[W,N],side:"west"}];
+  let per=0; segs.forEach(s=>{s.len=Math.hypot(s.b[0]-s.a[0],s.b[1]-s.a[1]); per+=s.len;});
+  const pts=[];
+  for(let i=0;i<n;i++){
+    let d=(i+0.5)/n*per;
+    for(const s of segs){ if(d<=s.len){ const t=d/s.len; const x=s.a[0]+(s.b[0]-s.a[0])*t, z=s.a[1]+(s.b[1]-s.a[1])*t; pts.push({x,z,y:RIM[s.side].y}); break;} d-=s.len; }
+  }
+  return pts;
+}
+function frame(node){ // forward, right, up unit vectors from yaw (rad, in xz) and tilt
+  const cy=Math.cos(node.yaw), sy=Math.sin(node.yaw), ct=Math.cos(node.tilt), st=Math.sin(node.tilt);
+  return {f:[cy*ct, st, sy*ct], r:[-sy,0,cy], u:[-cy*st, ct, -sy*st]};
+}
+function covered(node,px,py,pz){
+  const vx=px-node.x, vy=py-node.y, vz=pz-node.z;
+  const d2=vx*vx+vy*vy+vz*vz; if(d2>node.R*node.R) return false;
+  const F_=node.fr; const lx=vx*F_.f[0]+vy*F_.f[1]+vz*F_.f[2]; if(lx<=0) return false;
+  const ly=vx*F_.u[0]+vy*F_.u[1]+vz*F_.u[2], lz=vx*F_.r[0]+vy*F_.r[1]+vz*F_.r[2];
+  const az=Math.atan2(lz,lx), el=Math.atan2(ly,Math.hypot(lx,lz));
+  return Math.abs(az)<=node.hAz && Math.abs(el)<=node.hEl;
+}
+const AIR_CENTRE_Y=(AIR.y0+AIR.y1)/2;                        // 32.5 m
+function layout(n,tiltOffsetDeg,mast,aimDeg){
+  const s=sensor(), R=range();
+  nodes=rimPoints(n).map(p=>{
+    const yaw=Math.atan2(-p.z,-p.x)+aimDeg*Math.PI/180;    // toward field centre
+    const y=p.y+mast;
+    // auto-aim: elevation from the node to the centre of the airspace box, then offset
+    const autoTilt=Math.atan2(AIR_CENTRE_Y-y, Math.hypot(p.x,p.z));
+    const node={x:p.x,y,z:p.z,yaw,tilt:autoTilt+tiltOffsetDeg*Math.PI/180,R,hAz:s.az/2*Math.PI/180,hEl:s.el/2*Math.PI/180};
+    node.fr=frame(node); return node;
+  });
+}
+function wedgeGeometry(node,na=10,ne=6){
+  const pos=[]; const apex=[node.x,node.y,node.z]; const F_=node.fr;
+  const dir=(az,el)=>{const ca=Math.cos(az),sa=Math.sin(az),ce=Math.cos(el),se=Math.sin(el);
+    const lx=ca*ce, ly=se, lz=sa*ce; // local -> world
+    return [apex[0]+node.R*(lx*F_.f[0]+ly*F_.u[0]+lz*F_.r[0]), apex[1]+node.R*(lx*F_.f[1]+ly*F_.u[1]+lz*F_.r[1]), apex[2]+node.R*(lx*F_.f[2]+ly*F_.u[2]+lz*F_.r[2])];};
+  const P=[]; for(let i=0;i<=na;i++){P.push([]);for(let j=0;j<=ne;j++){P[i].push(dir(-node.hAz+2*node.hAz*i/na,-node.hEl+2*node.hEl*j/ne));}}
+  const tri=(a,b,c)=>{pos.push(...a,...b,...c);};
+  for(let i=0;i<na;i++)for(let j=0;j<ne;j++){tri(P[i][j],P[i+1][j],P[i+1][j+1]);tri(P[i][j],P[i+1][j+1],P[i][j+1]);}
+  for(let i=0;i<na;i++){tri(apex,P[i][0],P[i+1][0]);tri(apex,P[i+1][ne],P[i][ne]);}
+  for(let j=0;j<ne;j++){tri(apex,P[0][j+1],P[0][j]);tri(apex,P[na][j],P[na][j+1]);}
+  const g=new THREE.BufferGeometry(); g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3)); g.computeVertexNormals();
+  const edges=[]; const E=(a,b)=>edges.push(...a,...b);
+  E(apex,P[0][0]);E(apex,P[na][0]);E(apex,P[0][ne]);E(apex,P[na][ne]);
+  for(let i=0;i<na;i++){E(P[i][0],P[i+1][0]);E(P[i][ne],P[i+1][ne]);} for(let j=0;j<ne;j++){E(P[0][j],P[0][j+1]);E(P[na][j],P[na][j+1]);}
+  const eg=new THREE.BufferGeometry(); eg.setAttribute("position",new THREE.Float32BufferAttribute(edges,3));
+  return {g,eg};
+}
+function drawNodes(){
+  while(nodeGroup.children.length) nodeGroup.remove(nodeGroup.children[0]);
+  while(wedgeGroup.children.length) wedgeGroup.remove(wedgeGroup.children[0]);
+  nodes.forEach(n=>{
+    const m=new THREE.Mesh(new THREE.SphereGeometry(1.6,12,10),nodeMat); m.position.set(n.x,n.y,n.z); nodeGroup.add(m);
+    const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.25,Math.max(0.1,n.y-RIMy(n)),6),nodeMat); mast.position.set(n.x,(n.y+RIMy(n))/2,n.z); nodeGroup.add(mast);
+    const {g,eg}=wedgeGeometry(n); wedgeGroup.add(new THREE.Mesh(g,wedgeMat)); wedgeGroup.add(new THREE.LineSegments(eg,wedgeEdge));
+  });
+  wedgeGroup.visible=showWedges.checked;
+}
+function RIMy(n){ // rim height under a node
+  const dw=Math.abs(n.x-RIM.west.x), de=Math.abs(n.x-RIM.east.x), dn=Math.abs(n.z-RIM.north.z), ds=Math.abs(n.z-RIM.south.z);
+  const m=Math.min(dw,de,dn,ds); return m===dw?RIM.west.y: m===de?RIM.east.y: m===dn?RIM.north.y: RIM.south.y;
+}
+
+// ------------------------------------------------------- slice heatmap
+const SL={hx:140,hz:150,cell:2.5}; SL.nx=Math.round(2*SL.hx/SL.cell); SL.nz=Math.round(2*SL.hz/SL.cell);
+const sliceData=new Uint8Array(SL.nx*SL.nz*4);
+const sliceTex=new THREE.DataTexture(sliceData,SL.nx,SL.nz,THREE.RGBAFormat); sliceTex.magFilter=THREE.NearestFilter; sliceTex.minFilter=THREE.NearestFilter;
+const slice=new THREE.Mesh(new THREE.PlaneGeometry(2*SL.hx,2*SL.hz),new THREE.MeshBasicMaterial({map:sliceTex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));
+slice.rotation.x=-Math.PI/2; scene.add(slice);
+const sliceFrame=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(2*SL.hx,2*SL.hz)),new THREE.LineBasicMaterial({color:0x8C8A84,transparent:true,opacity:0.5}));
+sliceFrame.rotation.x=-Math.PI/2; scene.add(sliceFrame);
+function paintSlice(h){
+  let cov=0, tot=0;
+  for(let j=0;j<SL.nz;j++)for(let i=0;i<SL.nx;i++){
+    const x=-SL.hx+(i+0.5)*SL.cell, z=SL.hz-(j+0.5)*SL.cell; // texture rows bottom-up -> flip z
+    let c=0; for(const n of nodes){ if(covered(n,x,h,z)){c++; if(c>=2)break;} }
+    const k=(j*SL.nx+i)*4;
+    if(c===0){sliceData[k]=0;sliceData[k+1]=0;sliceData[k+2]=0;sliceData[k+3]=0;}
+    else if(c===1){sliceData[k]=0x3C;sliceData[k+1]=0x7F;sliceData[k+2]=0xC0;sliceData[k+3]=150;}
+    else{sliceData[k]=0x4C;sliceData[k+1]=0xAF;sliceData[k+2]=0x7A;sliceData[k+3]=170;}
+    if(Math.abs(x)<=AIR.x&&Math.abs(z)<=AIR.z){tot++; if(c>0)cov++;}
+  }
+  sliceTex.needsUpdate=true; slice.position.y=h+0.2; sliceFrame.position.y=h+0.2;
+  return tot?cov/tot:0;
+}
+// airspace statistics on a coarse 3-D grid
+function airStats(nodeList){
+  let n1=0,n2=0,tot=0;
+  for(let y=AIR.y0+AIR.cell/2;y<AIR.y1;y+=AIR.cell)for(let x=-AIR.x+AIR.cell/2;x<AIR.x;x+=AIR.cell)for(let z=-AIR.z+AIR.cell/2;z<AIR.z;z+=AIR.cell){
+    let c=0; for(const n of nodeList){ if(covered(n,x,y,z)){c++; if(c>=2)break;} }
+    tot++; if(c>=1)n1++; if(c>=2)n2++;
+  }
+  return {p1:n1/tot,p2:n2/tot};
+}
+function nodesNeeded(tiltDeg,mast,aimDeg){
+  const saved=nodes;
+  for(let n=1;n<=48;n++){ layout(n,tiltDeg,mast,aimDeg); if(airStats(nodes).p1>=0.9){nodes=saved;return n;} }
+  nodes=saved; return null;
+}
+
+// ---------------------------------------------------------------- UI
+const $=id=>document.getElementById(id);
+const nN=$("nN"),nT=$("nT"),nM=$("nM"),nY=$("nY"),nH=$("nH"),nS=$("nS"),nR=$("nR"),nO=$("nO");
+const cAz=$("cAz"),cEl=$("cEl"),cR=$("cR");
+const showWedges=$("showWedges");
+const fmtPct=v=>(100*v).toFixed(0)+"%";
+let needTimer=null;
+function refresh(){
+  const s=sensor();
+  $("oN").value=nN.value; $("oT").value=nT.value+"°"; $("oM").value=nM.value+" m"; $("oY").value=nY.value+"°"; $("oH").value=nH.value+" m";
+  $("sensorNote").innerHTML=s.note+(mode==="class"&&sensorKey!=="custom"?" <em>Classify range is a hard cap; expect the wedges to barely leave the rim.</em>":"");
+  layout(+nN.value,+nT.value,+nM.value,+nY.value);
+  // distance from the rims to the airspace, against what this sensor reaches
+  const R=range(); const dNear=Math.min(Math.abs(RIM.west.x),Math.abs(RIM.east.x))-AIR.x, dMid=Math.min(Math.abs(RIM.west.x),Math.abs(RIM.east.x));
+  $("hint").innerHTML=`Rim → nearest airspace ≈ <b>${dNear.toFixed(0)} m</b>, rim → midfield ≈ <b>${dMid.toFixed(0)} m</b>. This mode reaches <b>${R.toFixed(0)} m</b>.`
+    +(R<dNear?" <em>Cannot reach the airspace over the field from the rims at all.</em>":R<dMid?" <em>Reaches the near side only; the far half of the field is out of range.</em>":"");
+  drawNodes();
+  const sl=paintSlice(+nH.value);
+  const st=airStats(nodes);
+  $("s1").textContent=fmtPct(st.p1); $("s2").textContent=fmtPct(st.p2); $("sS").textContent=fmtPct(sl);
+  $("sN").textContent="…";
+  clearTimeout(needTimer);
+  needTimer=setTimeout(()=>{ const n=nodesNeeded(+nT.value,+nM.value,+nY.value); $("sN").textContent=n===null?">48":String(n); },30);
+}
+[nN,nT,nM,nY].forEach(el=>el.addEventListener("input",refresh));
+nH.addEventListener("input",()=>{ $("oH").value=nH.value+" m"; $("sS").textContent=fmtPct(paintSlice(+nH.value)); });
+showWedges.addEventListener("change",()=>{wedgeGroup.visible=showWedges.checked;});
+$("sensor").addEventListener("change",e=>{ sensorKey=e.target.value; $("custom").hidden=sensorKey!=="custom"; refresh(); });
+[cAz,cEl,cR].forEach(el=>el.addEventListener("input",refresh));
+document.querySelectorAll(".seg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed","false")); b.setAttribute("aria-pressed","true"); mode=b.dataset.mode; refresh();
+}));
+// ground image
+function fitBlueprint(){ const w=+nS.value; const img=bp.material.map&&bp.material.map.image; const ar=img?img.height/img.width:1;
+  bp.scale.set(w,w*ar,1); bp.rotation.z=nR.value*Math.PI/180; bp.material.opacity=+nO.value; $("oS").value=w+" m"; $("oR").value=nR.value+"°"; $("oO").value=(+nO.value).toFixed(2); }
+$("img").addEventListener("change",e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>{ new THREE.TextureLoader().load(rd.result,t=>{ t.anisotropy=4; bp.material.map=t; bp.material.needsUpdate=true; bp.visible=true; field.material.transparent=true; field.material.opacity=0.35; fitBlueprint(); }); }; rd.readAsDataURL(f); });
+[nS,nR,nO].forEach(el=>el.addEventListener("input",fitBlueprint));
+// views
+const VIEWS={
+  over:{t:[0,10,0],r:420,theta:0,phi:0.08},
+  west:{t:[0,25,0],r:150,theta:-Math.PI/2,phi:1.15,cam:[RIM.west.x-8,S.west.y1+S.west.box.h+2,0]},
+  east:{t:[0,25,0],r:150,theta:Math.PI/2,phi:1.2,cam:[RIM.east.x+6,S.east.y1+4,0]},
+  field:{t:[0,12,-30],r:60,theta:Math.PI,phi:1.45,cam:[0,1.8,40]},
+  drone:{t:[0,30,0],r:90,theta:-2.4,phi:1.05,cam:[-60,30,60]},
+  south:{t:[0,25,0],r:160,theta:0,phi:1.15,cam:[0,S.south.y1+4,RIM.south.z+6]}
+};
+function setView(v){ const V=VIEWS[v]; target.set(...V.t);
+  if(V.cam){ const c=new THREE.Vector3(...V.cam).sub(target); sph.r=c.length(); sph.phi=Math.acos(Math.max(-1,Math.min(1,c.y/sph.r))); sph.theta=Math.atan2(c.x,c.z); }
+  else{ sph.r=V.r; sph.theta=V.theta; sph.phi=V.phi; } }
+document.querySelectorAll(".views button").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
+
+// ---------------------------------------------------------- controls
+let drag=false,lx=0,ly=0;
+canvas.addEventListener("pointerdown",e=>{drag=true;lx=e.clientX;ly=e.clientY;canvas.setPointerCapture(e.pointerId);});
+canvas.addEventListener("pointerup",()=>drag=false);
+canvas.addEventListener("pointermove",e=>{ if(!drag)return; sph.theta-=(e.clientX-lx)*0.005; sph.phi=Math.max(0.05,Math.min(Math.PI/2-0.02,sph.phi-(e.clientY-ly)*0.005)); lx=e.clientX; ly=e.clientY; });
+canvas.addEventListener("wheel",e=>{ e.preventDefault(); sph.r=Math.max(8,Math.min(1500,sph.r*Math.exp(e.deltaY*0.0012))); },{passive:false});
+const keys={};
+addEventListener("keydown",e=>{ if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT")return; keys[e.key.toLowerCase()]=true; });
+addEventListener("keyup",e=>{ keys[e.key.toLowerCase()]=false; });
+function fly(dt){
+  const sp=(keys.shift?120:45)*dt; const f=new THREE.Vector3(Math.sin(sph.theta),0,Math.cos(sph.theta)).negate(); const r=new THREE.Vector3(-f.z,0,f.x);
+  if(keys.w)target.addScaledVector(f,sp); if(keys.s)target.addScaledVector(f,-sp);
+  if(keys.d)target.addScaledVector(r,sp); if(keys.a)target.addScaledVector(r,-sp);
+  if(keys.e)target.y+=sp; if(keys.q)target.y=Math.max(0.5,target.y-sp);
+}
+function resize(){ const w=innerWidth,h=innerHeight; if(renderer) renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+addEventListener("resize",resize); resize();
+let last=performance.now();
+function loop(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; fly(dt); placeCamera(); if(renderer) renderer.render(scene,camera); requestAnimationFrame(loop); }
+setView("drone");
+try{ refresh(); }catch(e){ showErr("Coverage calculation failed: "+(e.message||e)); }
+if(renderer) requestAnimationFrame(loop);
+})();
+</script>

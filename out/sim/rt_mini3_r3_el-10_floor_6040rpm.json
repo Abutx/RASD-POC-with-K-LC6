@@ -1,0 +1,31 @@
+{
+  "label": "drone_dji_mini3",
+  "source": "sionna",
+  "mode": "cw",
+  "session": "rt_mini3_v1",
+  "target": "DJI Mini 3 (PO facet model)",
+  "distance_m": 3.0,
+  "aspect": "hover",
+  "if_gain_db": 0.0,
+  "sample_rate": 50000,
+  "channels": [
+    "I",
+    "Q"
+  ],
+  "sim_method": "physical-optics facets (sim/rt/po.py) + image-method floor; Sionna RT used for calibration/validation only (rt_calib.py)",
+  "sim_rpm": 6040.0,
+  "sim_elevation_deg": -10.0,
+  "sim_floor": true,
+  "sim_rcs": {
+    "static_dbsm": -29.807214400713328,
+    "rotor_dbsm": [
+      -48.45268127488836,
+      -50.446468682595984,
+      -50.453730503679,
+      -48.45265383435776
+    ],
+    "rotors_total_dbsm": -43.31694735279066,
+    "blade_below_static_db": 13.50973295207734
+  },
+  "notes": "SIMULATED, not measured."
+}
